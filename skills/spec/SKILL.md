@@ -1,0 +1,134 @@
+---
+name: spec
+description: >-
+  Turn a fuzzy goal or existing Task into one self-contained, execution-ready
+  Task plan. Scope the surface, resolve standards, research load-bearing behaviour,
+  remove ambiguity, and maintain exactly one ACTIVE versioned execution plan.
+argument-hint: "[a goal to scope, or an existing task key (<task>) to deepen]"
+disable-model-invocation: true
+effort: max
+---
+
+Turn this goal or work item into a **Task** (or **Bug** for a defect fix) containing everything a fresh `/sy:ship` session needs to land one coherent PR. Code work is read-only; tracker writes use the `tracker` skill (`/sy:tracker`). End at the approved active plan; do not implement.
+
+Plan against fresh `origin/main` unless the user names another immutable base.
+
+$ARGUMENTS
+
+## Scope before routing
+
+- small cohesive module/doc/diff ⇒ read directly;
+- large repetitive surface ⇒ `sy:sweep` breadth brief;
+- one load-bearing end-to-end behaviour ⇒ `sy:trace`, one path per agent, at most 3 depth agents in flight.
+
+Agent output is a lead. Verify decisive spans and own the plan. Seed every agent prompt with known anchors — paths, symbols, entry points, keys — and name ground already covered; agents must not rediscover what the caller knows. Resolve standards early (in a delegate, per step 3) so the plan reflects authoritative repository policy and risk lenses.
+
+Ask one question at a time only when research cannot settle a decision that changes scope, design, or acceptance.
+
+## 1. Surface scan and interview
+
+- Fetch and inspect the intended base.
+- Map entry points directly or through `sy:sweep` according to size.
+- Establish goal, definition of done, boundaries, constraints, and priorities.
+- Suggest the user run `/rename spec: <goal-slug>` or `/rename spec <task> <slug>` once nameable.
+
+## 2. Create or load the Task
+
+### New goal
+
+Draft Summary, Context/constraints, and Out of scope. Use Bug for a defect fix, Task otherwise. Every Task/Bug must be parented to an Epic. Confirm parent and draft before creation via the `tracker` skill.
+
+### Existing Task
+
+Read its body/comments directly and preserve settled decisions. Delegate only large parent-Epic or PR tails to `sy:sweep`. Edit the body only when research changes framing. Ensure the parent Epic is `in-progress` when active work begins; the Task stays in `backlog` until its plan is approved (then `ready`, per step 6).
+
+## 3. Resolve standards and deep research
+
+- Resolve standards in a delegate (subagent running `/sy:standards resolve <scope>`) that returns only the compact contract — authority, task-relevant constraints, primitives, risk lenses; the raw rule and doc reads stay out of the spec context, where standards loaded early would be re-paid on every later turn.
+- Trace every load-bearing claim to code, current primary docs, or real data.
+- Use `sy:sweep` for breadth and `sy:trace` for one end-to-end path; verify decisive spans directly.
+- Pull representative data when shape/frequency matters.
+- Actively look for breaking cases and evidence against the preferred approach.
+
+Record standards compactly, for example:
+
+```text
+Standards authority
+- /repo-standards skill
+
+Task-specific constraints / risk lenses
+- public response schema remains backward compatible
+- migration needs rollback evidence
+```
+
+Convert every activated risk lens into a **verification obligation** — a claim plus named evidence `/sy:ship` must produce and `sy:gate` will verify:
+
+```text
+Verification obligations
+- lens: concurrency; claim: duplicate delivery is idempotent;
+  evidence: deterministic duplicate-delivery test, concurrent-update test
+- lens: migration; claim: old and new versions coexist safely;
+  evidence: expand/contract sequence, compatibility test
+```
+
+An obligation with no realistic evidence is a plan risk to surface, not a silent drop.
+
+## 4. Resolve ambiguity as it surfaces
+
+Ask immediately when research reaches a real owner decision that changes the plan. Record answers durably so `/sy:ship` does not re-ask.
+
+## 5. Too big for one PR? Return to `/sy:plan`
+
+Do not split an oversized Task ad hoc.
+
+For an existing `/sy:plan` leaf, post a `# SEAMS` comment describing pieces, interfaces, and dependencies, then stop with `/sy:plan <epic>`. `/sy:plan` performs the tracker's canonical decomposition (see the `tracker` skill).
+
+For a standalone objective, with confirmation promote it to an Epic, post the seams report, and stop with `/sy:plan <epic>`.
+
+## 6. Capture exactly one active versioned plan
+
+Present the full plan for sign-off:
+
+- approach and why;
+- strongest rejected alternative and why;
+- ordered concrete changes with file anchors/key signatures;
+- existing primitives to reuse;
+- standards authority and task-specific constraints/risk lenses;
+- verification obligations (lens → claim → named evidence);
+- design invariants — the deliberately small load-bearing list `sy:gate` must protect;
+- tests and acceptance criteria;
+- risks/edge cases;
+- unverified assumptions;
+- out of scope;
+- plan base: `PLAN_BASE_SHA` of the inspected base.
+
+After approval:
+
+1. if an older plan is ACTIVE, edit its comment to:
+
+```text
+# Execution Plan v<N-1>
+Status: SUPERSEDED
+Superseded by: v<N>
+```
+
+2. append the new comment:
+
+```text
+# Execution Plan v<N>
+Status: ACTIVE
+Supersedes: v<N-1>   # omit for v1
+```
+
+3. verify by rereading plan headings/statuses that **exactly one** plan is ACTIVE.
+4. set the Task to `ready` via the `tracker` skill — the plan is approved and it is now shippable.
+
+End the plan with `/sy:ship <task>` and a one-line ship profile: `<model tier> / <effort> / <process: full|light>`, such as `frontier / high / full`. Model tier is a quality floor, not a cost lever: workers run their declared tiers (BUILD at least opus, `sy:gate` frontier) and the profile may raise but never lower them. Tune cost through **effort**: request lower effort only with evidence the work is mechanical end to end, and never lower review effort. Process tier `light` (no transcript attachment at handoff) is allowed only when no risk lenses are activated and the change is small; default `full`.
+
+The ship profile never lowers review or build: `sy:gate` remains frontier tier and max effort, BUILD remains at least opus, and immutable CI/review coverage is identical in both process tiers.
+
+The bar: a fresh session reading the Task and sole ACTIVE plan can implement and open the PR without missing design decisions.
+
+## 7. Capture the session
+
+Delegate a subagent to render this `/sy:spec` session's transcript and attach it to the Task, every run, following the `tracker` skill's attachment flow (`$KIND=spec`). The reasoning trail behind the plan lands on the ticket with no manual `/export`, and the rendered text stays out of this context.
