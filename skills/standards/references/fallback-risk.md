@@ -2,10 +2,10 @@
 
 Use fallback standards only when no repository authority applies:
 
-- correctness and explicit failure over silent corruption;
+- correctness and explicit failure over silent corruption; fail loudly on missing or unexpected input rather than skip, swallow, return `None`/empty, or "do nothing";
 - reuse established project/platform primitives before invention;
 - specific error handling that preserves root causes;
-- tests proportional to behavioural risk and acceptance criteria;
+- tests proportional to behavioural risk and acceptance criteria; a test that can silently skip/xfail on a missing dependency, tool, or environment is not coverage — it hides regressions;
 - public interface documentation and compatibility consideration;
 - resource/performance claims measured or reasoned quantitatively;
 - match surrounding language/framework conventions.
