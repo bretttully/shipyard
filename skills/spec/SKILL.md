@@ -23,14 +23,14 @@ $ARGUMENTS
 
 Agent output is a lead. Verify decisive spans and own the plan. Seed every agent prompt with known anchors — paths, symbols, entry points, keys — and name ground already covered; agents must not rediscover what the caller knows. Resolve standards early (in a delegate, per step 3) so the plan reflects authoritative repository policy and risk lenses.
 
-Ask one question at a time only when research cannot settle a decision that changes scope, design, or acceptance.
+Ask one question at a time, via `AskUserQuestion`, only when research cannot settle a decision that changes scope, design, or acceptance — see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`.
 
 ## 1. Surface scan and interview
 
 - Fetch and inspect the intended base.
 - Map entry points directly or through `sy:sweep` according to size.
 - Establish goal, definition of done, boundaries, constraints, and priorities.
-- Suggest the user run `/rename spec: <goal-slug>` or `/rename spec <task> <slug>` once nameable.
+- Suggest, as a single optional aside (not a gate), that the user run `/rename spec: <goal-slug>` or `/rename spec <task> <slug>` once nameable.
 
 ## 2. Create or load the Task
 
@@ -73,11 +73,11 @@ Verification obligations
 
 An obligation with no realistic evidence is a plan risk to surface, not a silent drop.
 
-When the task generates or reviews images (figures, screenshots, plots, marketing visuals), add the standing image-inspection invariant to the plan's design invariants and a verification obligation whose named evidence is a `sy:img-inspector` text verdict: visual inspection is delegated to a short-lived inspector and never `Read` into a long-running context. See `${CLAUDE_PLUGIN_ROOT}/skills/ship/references/image-inspection.md`.
+When the task generates or reviews images (figures, screenshots, plots, marketing visuals), add the standing image-inspection invariant to the plan's design invariants and a verification obligation whose named evidence is a `sy:img-inspector` text verdict: visual inspection is delegated to a short-lived inspector and never `Read` into a long-running context. See `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/image-inspection.md`.
 
 ## 4. Resolve ambiguity as it surfaces
 
-Ask immediately when research reaches a real owner decision that changes the plan. Record answers durably so `/sy:ship` does not re-ask.
+Ask immediately, via `AskUserQuestion`, when research reaches a real owner decision that changes the plan. Record answers durably so `/sy:ship` does not re-ask.
 
 ## 5. Too big for one PR? Return to `/sy:plan`
 
@@ -85,7 +85,7 @@ Do not split an oversized Task ad hoc.
 
 For an existing `/sy:plan` leaf, post a `# SEAMS` comment describing pieces, interfaces, and dependencies, then stop with `/sy:plan <epic>`. `/sy:plan` performs the tracker's canonical decomposition (see the `tracker` skill).
 
-For a standalone objective, with confirmation promote it to an Epic, post the seams report, and stop with `/sy:plan <epic>`.
+For a standalone objective, confirm via `AskUserQuestion` before promoting it to an Epic, then post the seams report and stop with `/sy:plan <epic>`.
 
 ## 6. Capture exactly one active versioned plan
 
@@ -103,6 +103,8 @@ Present the full plan for sign-off:
 - unverified assumptions;
 - out of scope;
 - plan base: `PLAN_BASE_SHA` of the inspected base.
+
+Present that content as a status update, then close the turn with a single `AskUserQuestion` call — approve as-is / request changes / other — per `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`. This is the plan's sign-off gate: do not infer approval from a reply that doesn't answer it.
 
 After approval:
 

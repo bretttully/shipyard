@@ -21,7 +21,7 @@ $ARGUMENTS
 - One Task/Bug ≈ one coherent PR. Keep far work conceptual until evidence justifies decomposition.
 - Objective is stable; path is provisional and should adapt to shipped evidence.
 - Flat tracker execution, fractal conceptual map.
-- Ask one question at a time only when the answer changes seam, sequence, blocker, or outcome.
+- Ask one question at a time, via `AskUserQuestion`, only when the answer changes seam, sequence, blocker, or outcome — see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`.
 
 ## Scope and delegation
 

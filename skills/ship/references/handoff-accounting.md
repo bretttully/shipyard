@@ -91,4 +91,4 @@ The renderer truncates bulky tool output and strips raw-JSONL noise, so the resu
 
 ## Handoff
 
-Task stays `in-review` until merge. End with PR URL, tracker status, acceptance state, coverage SHAs/requested+observed gate models, usage/metrics comment status, transcript attachment status, and owned-worktree status.
+Task stays `in-review` until merge. Report PR URL, tracker status, acceptance state, coverage SHAs/requested+observed gate models, usage/metrics comment status, transcript attachment status, and owned-worktree status as a status update, then close the turn with an isolated `## Action needed` block (per `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`) stating the PR is ready and merge awaits your explicit authorization — never let that wait get lost among the status facts above it.

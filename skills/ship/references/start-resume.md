@@ -4,7 +4,7 @@ This phase runs as the `sy:ship-start` worker: it initializes or resumes ownersh
 
 1. Read Task body/comments and select the sole ACTIVE execution plan.
 2. Read parent Epic only enough for sibling interfaces/blockers; use `sy:sweep` for a large tail.
-3. Ship profile (model / effort / process tier) is a parent precondition verified before dispatch; if the running profile is below plan the parent stops for a user decision. The profile floors worker models (may raise, never lower, so BUILD keeps its opus tier) and sets worker effort to match the work; it never lowers review effort (`sy:gate` stays max). Do not prompt the user from the worker.
+3. Ship profile (model / effort / process tier) is a parent precondition verified before dispatch; if the running profile is below plan the parent stops and asks via `AskUserQuestion` (raise the profile / proceed at plan floor / other) per `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`. The profile floors worker models (may raise, never lower, so BUILD keeps its opus tier) and sets worker effort to match the work; it never lowers review effort (`sy:gate` stays max). Do not prompt the user from the worker.
 4. Resolve standards in a delegate (subagent running `/sy:standards resolve <task scope>`, added to `agents_used`) that returns only the retained contract — authority, implementation contract, primitives, risk lenses; rule-file reads stay out of the ship context.
 5. Load `.scratch/<task>-ship-state.yaml` from main checkout if present.
 
@@ -16,7 +16,7 @@ Classify:
 - ready PR → inspect coverage freshness;
 - merged PR → set the task `done` if needed via the `tracker` skill and clean only recorded paths.
 
-Suggest the user run `/rename ship <task> <slug>` once loaded.
+Suggest, as a single optional aside (not an `## Action needed` block, per `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`), that the user run `/rename ship <task> <slug>` once loaded.
 
 ## Fresh run
 

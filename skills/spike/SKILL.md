@@ -14,7 +14,7 @@ Answer: **is this idea worth a proper project?** Produce a reproducible explorat
 
 $ARGUMENTS
 
-Create/load the spike Task via the `tracker` skill: discover candidate hackday Epics in the configured project (owned by the `tracker` skill), let the user choose the parent, create the Task, set it `in-progress`, and self-assign. Keep tracker command mechanics in the `tracker` skill (`/sy:tracker`), not here.
+Create/load the spike Task via the `tracker` skill: discover candidate hackday Epics in the configured project (owned by the `tracker` skill), let the user choose the parent via `AskUserQuestion` (`${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`), create the Task, set it `in-progress`, and self-assign. Keep tracker command mechanics in the `tracker` skill (`/sy:tracker`), not here.
 
 ## Routing
 
@@ -53,7 +53,7 @@ Define:
 - representative and adversarial slices;
 - controls for leakage/confounding where relevant.
 
-Surface to the user only when a load-bearing choice changes the experiment or verdict interpretation.
+Surface to the user via `AskUserQuestion` only when a load-bearing choice changes the experiment or verdict interpretation.
 
 ## 4. Measure gain and regression
 

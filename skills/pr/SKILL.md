@@ -18,7 +18,7 @@ Never operate on `main`. Confirm branch and PR state.
 
 - **No PR** ⇒ create; push first if needed.
 - **Draft exists** ⇒ promote/refresh when caller requests readiness.
-- **Open non-draft exists** ⇒ cleanup/update. If called directly by a human, ask before rewriting mutable metadata; when `/sy:ship` explicitly invokes promotion/refresh, that invocation is authorization for that operation.
+- **Open non-draft exists** ⇒ cleanup/update. If called directly by a human, ask via `AskUserQuestion` before rewriting mutable metadata (`${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`); when `/sy:ship` explicitly invokes promotion/refresh, that invocation is authorization for that operation.
 
 ## 2. Description contract
 

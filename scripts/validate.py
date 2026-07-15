@@ -63,9 +63,10 @@ REQUIRED = {
     "skills/ship/references/start-resume.md",
     "skills/ship/references/implementation.md",
     "skills/ship/references/immutable-gate.md",
-    "skills/ship/references/image-inspection.md",
     "skills/ship/references/handoff-accounting.md",
     "skills/ship/references/merge-accounting.md",
+    "skills/shared/references/image-inspection.md",
+    "skills/shared/references/user-interaction.md",
     "skills/plan/references/new-objective.md",
     "skills/plan/references/reentry.md",
     "skills/plan/references/roadmap-shaping.md",
@@ -200,7 +201,11 @@ def check_invariants(errors: list[str]) -> None:
     gate_ref = read("skills/ship/references/immutable-gate.md")
     contract = read("skills/tracker/CONTRACT.md")
     impl = read("skills/ship/references/implementation.md")
-    img_ref = read("skills/ship/references/image-inspection.md")
+    img_ref = read("skills/shared/references/image-inspection.md")
+    plan = read("skills/plan/SKILL.md")
+    spike = read("skills/spike/SKILL.md")
+    pr = read("skills/pr/SKILL.md")
+    user_interaction = read("skills/shared/references/user-interaction.md")
 
     if "--match-head-commit" not in merge:
         fail("merge path missing atomic head guard (--match-head-commit)", errors)
@@ -228,6 +233,11 @@ def check_invariants(errors: list[str]) -> None:
         fail("build implementation must fan figure inspection out to sy:img-inspector", errors)
     if "REVIEW_BASE_SHA" not in gate or "REVIEWED_SHA" not in gate:
         fail("gate must report immutable base/head coverage", errors)
+    if "## Action needed" not in user_interaction or "Optional suggestions" not in user_interaction:
+        fail("user-interaction reference must define the Action needed block and the optional-suggestion downgrade", errors)
+    for name, text in (("ship", ship + start + handoff), ("spec", spec), ("plan", plan), ("spike", spike), ("pr", pr)):
+        if "AskUserQuestion" not in text:
+            fail(f"{name} skill must route user decisions through AskUserQuestion per user-interaction.md", errors)
 
     gate_fm = gate.split("---", 2)[1]
     if "Skill" not in gate_fm:

@@ -20,7 +20,7 @@ $ARGUMENTS
 - Resolve tracker blockers before branching; decomposed/superseded closure is not delivery.
 - Read small cohesive surfaces directly; delegate large/verbose work — standards resolution, verbose verification (test/lint/type runs), and CI triage all count as verbose, and every added delegate enters `agents_used`. At most 3 depth agents in flight.
 - START, BUILD, and GATE each run as disposable autonomous worker subagents (`sy:ship-start`/`sy:ship-build`/`sy:ship-gate`); the parent is a thin dispatcher owning durable state (state file, worktrees, PR/tracker identity), the HANDOFF retro/accounting, MERGE, and all user interaction.
-- Workers never prompt the user; each returns `done`, `needs-decision`, `bail-to-spec`, or `blocked` per the worker contract. The parent resolves `needs-decision` from plan/standards/code first and the user only when genuinely ambiguous, then dispatches a fresh continuation worker from the checkpoint.
+- Workers never prompt the user; each returns `done`, `needs-decision`, `bail-to-spec`, or `blocked` per the worker contract. The parent resolves `needs-decision` from plan/standards/code first and asks you via `AskUserQuestion` only when genuinely ambiguous, then dispatches a fresh continuation worker from the checkpoint.
 - Checkpoints are slice/step-granular and idempotent: a continuation re-does no committed, pushed, or tracker-posted work and re-creates no recorded worktree. A phase exceeding a few `needs-decision` returns escalates to `/sy:spec` as underspecified.
 - Every writable delegate gets a caller-created, recorded worktree.
 - Worktrees live in a sibling directory beside the repo (`<repo>-worktrees/<branch>`, e.g. `/path/to/myrepo` → `/path/to/myrepo-worktrees/<branch>`), never nested inside the working tree; an in-tree worktree pollutes the main checkout's status, search, and diffs.
@@ -29,8 +29,9 @@ $ARGUMENTS
 - Model tier is a quality floor: each phase worker runs at least its declared tier (BUILD stays at least opus) and the ship profile may raise but never lower it, so the parent passes no model override that drops a worker below its default. Effort is the profile's cost lever: the parent applies the plan's effort to workers to match the work but never lowers review effort (`sy:gate` stays max).
 - Resolve gate model explicitly and pass it as the Agent invocation's actual model override; record requested and transcript-observed models separately.
 - Token accounting must aggregate the main ship transcript **and all nested subagent transcripts**.
-- Images stay out of the long-running context: figures/screenshots/plots are inspected only through short-lived `sy:img-inspector` subagents that return text verdicts, and no image `Read` appears in a BUILD or GATE transcript (see `references/image-inspection.md`).
+- Images stay out of the long-running context: figures/screenshots/plots are inspected only through short-lived `sy:img-inspector` subagents that return text verdicts, and no image `Read` appears in a BUILD or GATE transcript (see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/image-inspection.md`).
 - Tracker machine logs are small standalone JSON comments; never bury usage or metrics JSON inside retrospectives or plan comments.
+- Talking to you follows exactly one of three modes per turn — status update, `AskUserQuestion`, or an isolated `## Action needed` block — never blended; see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`.
 
 ## Compression boundary
 
@@ -45,7 +46,7 @@ The parent dispatches each of START, BUILD, and GATE (and any resumed segment) t
 - `bail-to-spec` — the plan's contract or architecture is invalidated; reason and offending anchors.
 - `blocked` — external cause (merge authorization, infrastructure); what is required.
 
-The parent advances on `done`; resolves `needs-decision` from plan/standards/code and dispatches a continuation worker from the checkpoint, asking you directly in-session only when the choice is genuinely ambiguous; stops for `/sy:spec` on `bail-to-spec`; and surfaces `blocked` to you. Parent-owned throughout: user interaction, durable-state ownership, the START profile guard, and HANDOFF and MERGE orchestration.
+The parent advances on `done`; resolves `needs-decision` from plan/standards/code and dispatches a continuation worker from the checkpoint, asking via `AskUserQuestion` only when the choice is genuinely ambiguous; stops for `/sy:spec` on `bail-to-spec`; and surfaces `blocked` to you as an `## Action needed` block naming the external cause. Parent-owned throughout: user interaction, durable-state ownership, the START profile guard, and HANDOFF and MERGE orchestration.
 
 ## State router
 
