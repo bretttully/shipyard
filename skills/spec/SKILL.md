@@ -73,6 +73,8 @@ Verification obligations
 
 An obligation with no realistic evidence is a plan risk to surface, not a silent drop.
 
+When the task generates or reviews images (figures, screenshots, plots, marketing visuals), add the standing image-inspection invariant to the plan's design invariants and a verification obligation whose named evidence is a `sy:img-inspector` text verdict: visual inspection is delegated to a short-lived inspector and never `Read` into a long-running context. See `${CLAUDE_PLUGIN_ROOT}/skills/ship/references/image-inspection.md`.
+
 ## 4. Resolve ambiguity as it surfaces
 
 Ask immediately when research reaches a real owner decision that changes the plan. Record answers durably so `/sy:ship` does not re-ask.

@@ -11,6 +11,7 @@ This page is the complete reference for every knob. For the one-time GitHub Proj
 | `SY_TRACKER` | both | no | `jira` | Selects the tracker adapter: `jira` or `github`. This is the single point where the tracker is chosen. |
 | `SY_FRONTIER_MODEL` | both | no | `fable` | The model `sy:gate` uses for the independent review. A quality floor, not a cost dial — set it to your strongest available model. |
 | `SY_FRONTIER_FALLBACK` | both | no | `opus` | The model the reviewer falls back to once if the frontier model cannot run (spend cap, rate limit, or a refusal). If the fallback also fails, ship returns `blocked` rather than promoting an unreviewed commit. |
+| `SY_IMAGE_MODEL` | both | no | `sonnet` | The model `sy:img-inspector` uses to look at figures/screenshots/plots and return a text verdict, so image tokens stay out of the long-running context. A quality floor, not a cost dial. |
 | `SY_BACKLOG_COLNAME` | both | **yes** | — | Your board/workflow name for the `backlog` column (queued, not yet specced). |
 | `SY_READY_COLNAME` | both | **yes** | — | Your name for the `ready` column (specced, plan approved). |
 | `SY_IN_PROGRESS_COLNAME` | both | **yes** | — | Your name for the `in-progress` column (active build). |
@@ -38,6 +39,7 @@ Shipyard is opinionated about the **number and role** of the lifecycle columns �
   "env": {
     "SY_TRACKER": "jira",
     "SY_FRONTIER_MODEL": "fable",
+    "SY_IMAGE_MODEL": "sonnet",
     "ACLI_EMAIL": "you@example.com",
     "ACLI_SITE": "your-org.atlassian.net",
     "ACLI_PROJECT": "PROJ",
@@ -61,6 +63,7 @@ Shipyard is opinionated about the **number and role** of the lifecycle columns �
   "env": {
     "SY_TRACKER": "github",
     "SY_FRONTIER_MODEL": "fable",
+    "SY_IMAGE_MODEL": "sonnet",
     "SY_GH_PROJECT": "@me/3",
     "SY_GH_REPO": "your-name/your-repo",
     "SY_BACKLOG_COLNAME": "Backlog",
@@ -86,4 +89,4 @@ Shipyard never passes tokens as command-line arguments.
 
 ## Model routing
 
-Leave `CLAUDE_CODE_SUBAGENT_MODEL` **unset**. It overrides model routing for every subagent and takes precedence over `SY_FRONTIER_MODEL`, so setting it would silently reroute the independent reviewer off its intended model. `./install.sh` warns if it is set.
+Leave `CLAUDE_CODE_SUBAGENT_MODEL` **unset**. It overrides model routing for every subagent and takes precedence over `SY_FRONTIER_MODEL` and `SY_IMAGE_MODEL`, so setting it would silently reroute the independent reviewer and the image inspector off their intended models. `./install.sh` warns if it is set.

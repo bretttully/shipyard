@@ -96,7 +96,7 @@ shipyard/
   .claude-plugin/plugin.json      # name: sy, version 1.0.0
   hooks/hooks.json                # review guard + usage accounting (plugin-level)
   scripts/                        # tracker-agnostic: validate.py, session_usage.py, review_guard.py
-  agents/                         # sweep seam trace slice hunt gate ship-{start,build,gate}
+  agents/                         # sweep seam trace slice hunt gate img-inspector ship-{start,build,gate}
   skills/
     plan/ spec/ ship/ spike/ pr/ ci/ standards/
     tracker/

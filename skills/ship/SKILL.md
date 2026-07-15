@@ -29,6 +29,7 @@ $ARGUMENTS
 - Model tier is a quality floor: each phase worker runs at least its declared tier (BUILD stays at least opus) and the ship profile may raise but never lower it, so the parent passes no model override that drops a worker below its default. Effort is the profile's cost lever: the parent applies the plan's effort to workers to match the work but never lowers review effort (`sy:gate` stays max).
 - Resolve gate model explicitly and pass it as the Agent invocation's actual model override; record requested and transcript-observed models separately.
 - Token accounting must aggregate the main ship transcript **and all nested subagent transcripts**.
+- Images stay out of the long-running context: figures/screenshots/plots are inspected only through short-lived `sy:img-inspector` subagents that return text verdicts, and no image `Read` appears in a BUILD or GATE transcript (see `references/image-inspection.md`).
 - Tracker machine logs are small standalone JSON comments; never bury usage or metrics JSON inside retrospectives or plan comments.
 
 ## Compression boundary

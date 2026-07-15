@@ -15,7 +15,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 
-EXPECTED_AGENTS = {"sweep", "seam", "trace", "slice", "hunt", "gate", "ship-start", "ship-build", "ship-gate"}
+EXPECTED_AGENTS = {"sweep", "seam", "trace", "slice", "hunt", "gate", "ship-start", "ship-build", "ship-gate", "img-inspector"}
 EXPECTED_SKILLS = {"plan", "spec", "ship", "spike", "pr", "ci", "standards", "tracker"}
 FORBIDDEN_OLD_NAMES = {"explore-sonnet", "seam-scout", "path-tracer", "slice-builder", "bug-hunter", "rev-gate"}
 
@@ -63,6 +63,7 @@ REQUIRED = {
     "skills/ship/references/start-resume.md",
     "skills/ship/references/implementation.md",
     "skills/ship/references/immutable-gate.md",
+    "skills/ship/references/image-inspection.md",
     "skills/ship/references/handoff-accounting.md",
     "skills/ship/references/merge-accounting.md",
     "skills/plan/references/new-objective.md",
@@ -198,6 +199,8 @@ def check_invariants(errors: list[str]) -> None:
     start = read("skills/ship/references/start-resume.md")
     gate_ref = read("skills/ship/references/immutable-gate.md")
     contract = read("skills/tracker/CONTRACT.md")
+    impl = read("skills/ship/references/implementation.md")
+    img_ref = read("skills/ship/references/image-inspection.md")
 
     if "--match-head-commit" not in merge:
         fail("merge path missing atomic head guard (--match-head-commit)", errors)
@@ -217,6 +220,12 @@ def check_invariants(errors: list[str]) -> None:
         fail("handoff must scale records by process tier", errors)
     if "design contract" not in gate or "verification obligation" not in gate:
         fail("gate must verify the design contract and verification obligations", errors)
+    if "SY_IMAGE_MODEL" not in img_ref or "img-inspector" not in img_ref:
+        fail("image-inspection reference must resolve SY_IMAGE_MODEL and route to sy:img-inspector", errors)
+    if "img-inspector" not in gate:
+        fail("gate must protect the image-inspection invariant (no image Reads; delegate to sy:img-inspector)", errors)
+    if "img-inspector" not in impl:
+        fail("build implementation must fan figure inspection out to sy:img-inspector", errors)
     if "REVIEW_BASE_SHA" not in gate or "REVIEWED_SHA" not in gate:
         fail("gate must report immutable base/head coverage", errors)
 
