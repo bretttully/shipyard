@@ -15,8 +15,11 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 
-EXPECTED_AGENTS = {"sweep", "seam", "trace", "slice", "hunt", "gate", "ship-start", "ship-build", "ship-gate", "img-inspector"}
-EXPECTED_SKILLS = {"plan", "spec", "ship", "spike", "pr", "ci", "standards", "tracker"}
+EXPECTED_AGENTS = {
+    "sweep", "seam", "trace", "slice", "hunt", "gate", "ship-start", "ship-build", "ship-gate",
+    "img-inspector", "explain-author",
+}
+EXPECTED_SKILLS = {"plan", "spec", "ship", "spike", "pr", "ci", "standards", "tracker", "explain"}
 FORBIDDEN_OLD_NAMES = {"explore-sonnet", "seam-scout", "path-tracer", "slice-builder", "bug-hunter", "rev-gate"}
 
 CANONICAL_VERBS = {
@@ -205,6 +208,7 @@ def check_invariants(errors: list[str]) -> None:
     plan = read("skills/plan/SKILL.md")
     spike = read("skills/spike/SKILL.md")
     pr = read("skills/pr/SKILL.md")
+    explain = read("skills/explain/SKILL.md")
     user_interaction = read("skills/shared/references/user-interaction.md")
 
     if "--match-head-commit" not in merge:
@@ -235,7 +239,10 @@ def check_invariants(errors: list[str]) -> None:
         fail("gate must report immutable base/head coverage", errors)
     if "## Action needed" not in user_interaction or "Optional suggestions" not in user_interaction:
         fail("user-interaction reference must define the Action needed block and the optional-suggestion downgrade", errors)
-    for name, text in (("ship", ship + start + handoff), ("spec", spec), ("plan", plan), ("spike", spike), ("pr", pr)):
+    for name, text in (
+        ("ship", ship + start + handoff), ("spec", spec), ("plan", plan), ("spike", spike),
+        ("pr", pr), ("explain", explain),
+    ):
         if "AskUserQuestion" not in text:
             fail(f"{name} skill must route user decisions through AskUserQuestion per user-interaction.md", errors)
 
