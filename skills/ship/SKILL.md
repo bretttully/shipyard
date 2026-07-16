@@ -32,6 +32,7 @@ $ARGUMENTS
 - Images stay out of the long-running context: figures/screenshots/plots are inspected only through short-lived `sy:img-inspector` subagents that return text verdicts, and no image `Read` appears in a BUILD or GATE transcript (see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/image-inspection.md`).
 - Tracker machine logs are small standalone JSON comments; never bury usage or metrics JSON inside retrospectives or plan comments.
 - Talking to you follows exactly one of three modes per turn — status update, `AskUserQuestion`, or an isolated `## Action needed` block — never blended; see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`.
+- Mandated external writes obey write integrity: a posted record later overruled or found wrong is corrected on its own surface, and a denied write is never rerouted through another tool/path to force it through — surfaced loudly instead. Under auto-mode these are the operator's only safeguard against a stale or forced write; see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/write-integrity.md`.
 
 ## Compression boundary
 

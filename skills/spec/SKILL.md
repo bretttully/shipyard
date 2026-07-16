@@ -104,9 +104,9 @@ Present the full plan for sign-off:
 - out of scope;
 - plan base: `PLAN_BASE_SHA` of the inspected base.
 
-Present that content as a status update, then close the turn with a single `AskUserQuestion` call — approve as-is / request changes / other — per `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`. This is the plan's sign-off gate: do not infer approval from a reply that doesn't answer it.
+Present that content as a status update, then close the turn with a single `AskUserQuestion` call — approve as-is / request changes / other — per `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`. Name the mutation the approval authorizes: on approval the run will post the ACTIVE plan comment (and, when superseding, mark the prior plan SUPERSEDED) and set the Task `ready`. Under auto-mode this sign-off is the consent point for those writes, so it states them rather than implying them. This is the plan's sign-off gate: do not infer approval from a reply that doesn't answer it.
 
-After approval:
+After approval (marking a superseded plan SUPERSEDED rather than leaving two ACTIVE is the retroactive-honesty invariant in `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/write-integrity.md`: an overruled record is corrected on its own surface, never left standing):
 
 1. if an older plan is ACTIVE, edit its comment to:
 
@@ -135,4 +135,4 @@ The bar: a fresh session reading the Task and sole ACTIVE plan can implement and
 
 ## 7. Capture the session
 
-Delegate a subagent to render this `/sy:spec` session's transcript and attach it to the Task, every run, following the `tracker` skill's attachment flow (`$KIND=spec`). The reasoning trail behind the plan lands on the ticket with no manual `/export`, and the rendered text stays out of this context.
+Delegate a subagent to render this `/sy:spec` session's transcript and attach it to the Task, every run, following the `tracker` skill's attachment flow (`$KIND=spec`). The reasoning trail behind the plan lands on the ticket with no manual `/export`, and the rendered text stays out of this context. Subagent delegation is primary; when the delegation itself is denied under auto-mode, the identical render-and-attach may run inline as an explicit permitted fallback — the same authorized-alternate-route case of the denied-write boundary in `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/write-integrity.md` — with the rendered text still handled by path only and never read back into this context. If neither path completes, surface it loudly rather than skipping the attachment.

@@ -70,6 +70,7 @@ REQUIRED = {
     "skills/ship/references/merge-accounting.md",
     "skills/shared/references/image-inspection.md",
     "skills/shared/references/user-interaction.md",
+    "skills/shared/references/write-integrity.md",
     "skills/plan/references/new-objective.md",
     "skills/plan/references/reentry.md",
     "skills/plan/references/roadmap-shaping.md",
@@ -210,6 +211,7 @@ def check_invariants(errors: list[str]) -> None:
     pr = read("skills/pr/SKILL.md")
     explain = read("skills/explain/SKILL.md")
     user_interaction = read("skills/shared/references/user-interaction.md")
+    write_integrity = read("skills/shared/references/write-integrity.md")
 
     if "--match-head-commit" not in merge:
         fail("merge path missing atomic head guard (--match-head-commit)", errors)
@@ -239,6 +241,15 @@ def check_invariants(errors: list[str]) -> None:
         fail("gate must report immutable base/head coverage", errors)
     if "## Action needed" not in user_interaction or "Optional suggestions" not in user_interaction:
         fail("user-interaction reference must define the Action needed block and the optional-suggestion downgrade", errors)
+    wi = write_integrity.lower()
+    if "retroactive honesty" not in wi:
+        fail("write-integrity reference must define the retroactive-honesty invariant", errors)
+    if "denied-write boundary" not in wi:
+        fail("write-integrity reference must define the denied-write boundary invariant", errors)
+    if "gh pr ready" not in pr:
+        fail("pr skill must document the Copilot trigger (gh pr ready)", errors)
+    if "attach the scanned transcript" not in handoff or "attach the scanned transcript" not in merge:
+        fail("merge authorization must name its follow-on mutations (merge, attach the scanned transcript, set the task done) at the consent point", errors)
     for name, text in (
         ("ship", ship + start + handoff), ("spec", spec), ("plan", plan), ("spike", spike),
         ("pr", pr), ("explain", explain),

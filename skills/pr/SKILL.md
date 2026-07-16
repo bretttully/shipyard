@@ -39,7 +39,11 @@ Title: `<TICKET> - <imperative summary>` when branch carries a ticket key.
 
 ## 3. Review threads
 
-Every relevant review thread gets an answer; push back on bad trade-offs instead of rubber-stamping.
+A draft PR gets **no** automated review — Copilot and similar reviewers do not comment until the PR is marked ready, so a draft that is never promoted shows a permanently empty thread list that reads as "nothing to reconcile". Marking it ready is the trigger: `gh pr ready <pr>`. If the repo has no automated reviewer configured, or one that does not fire on ready, request it explicitly as the fallback (`gh pr edit <pr> --add-reviewer <bot>` where supported, or the repo's manual "request review" control) rather than assuming a review will appear.
+
+Reconcile the reviewer's threads by **author bot-type, not a hardcoded login.** The same reviewer's bot login is not stable across the GitHub REST and GraphQL surfaces (e.g. a `-bot` suffix or `[bot]` bracket form differs between them), so a query filtered to one literal login silently returns zero threads on the other surface and reports a false "0 new comments". Enumerate all review comments/threads and select by author type being a bot — for example `gh api repos/<o>/<r>/pulls/<pr>/comments --jq '[.[] | select(.user.type=="Bot")]'` (or the GraphQL `reviewThreads` with `author { __typename }` matched against `Bot`) — so every bot thread is caught regardless of which login form that surface reports. Reconcile against comment/thread ids, not login strings.
+
+Every relevant review thread gets an answer; push back on bad trade-offs instead of rubber-stamping. A reply is a posted record: one later found wrong is corrected on the thread, not left standing (`${CLAUDE_PLUGIN_ROOT}/skills/shared/references/write-integrity.md`, retroactive honesty).
 
 - small thread set ⇒ read directly;
 - long auto-reviewer/multi-round tail ⇒ `sy:sweep` brief with open suggestion, target `file:line`, and addressed/unaddressed state.
