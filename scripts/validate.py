@@ -250,6 +250,12 @@ def check_invariants(errors: list[str]) -> None:
         fail("pr skill must document the Copilot trigger (gh pr ready)", errors)
     if "attach the scanned transcript" not in handoff or "attach the scanned transcript" not in merge:
         fail("merge authorization must name its follow-on mutations (merge, attach the scanned transcript, set the task done) at the consent point", errors)
+    if "write-integrity.md" not in ship or "write-integrity.md" not in pr or "write-integrity.md" not in spec or "write-integrity.md" not in plan:
+        fail("ship/pr/spec/plan must each cross-reference the write-integrity reference", errors)
+    if "Name the mutation the approval authorizes" not in spec:
+        fail("spec sign-off must name the mutations its approval authorizes", errors)
+    if "name the mutations the go-ahead covers" not in plan:
+        fail("plan approval must name the mutations the go-ahead covers", errors)
     for name, text in (
         ("ship", ship + start + handoff), ("spec", spec), ("plan", plan), ("spike", spike),
         ("pr", pr), ("explain", explain),
