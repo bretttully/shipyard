@@ -101,7 +101,7 @@ Present the full plan for sign-off:
 - tests and acceptance criteria;
 - risks/edge cases;
 - unverified assumptions;
-- out of scope;
+- out of scope — what this plan deliberately excludes; note it is a default contract, not a wall: small, adjacent, low-risk issues surfaced during ship may be folded in as recorded scope extensions rather than always spawning siblings (see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/scope-discipline.md`);
 - plan base: `PLAN_BASE_SHA` of the inspected base.
 
 Present that content as a status update, then close the turn with a single `AskUserQuestion` call — approve as-is / request changes / other — per `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`. Name the mutation the approval authorizes: on approval the run will post the ACTIVE plan comment (and, when superseding, mark the prior plan SUPERSEDED) and set the Task `ready`. Under auto-mode this sign-off is the consent point for those writes, so it states them rather than implying them. This is the plan's sign-off gate: do not infer approval from a reply that doesn't answer it.

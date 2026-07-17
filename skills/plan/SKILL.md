@@ -19,6 +19,7 @@ $ARGUMENTS
 - Work backwards: North Star → capabilities → dependency order → near executable leaves.
 - At most **4** leaves may be active `/sy:spec`-ready/in-spec/in-ship/in-review at once.
 - One Task/Bug ≈ one coherent PR. Keep far work conceptual until evidence justifies decomposition.
+- Not every issue surfaced mid-ship earns its own leaf: a small, adjacent, low-risk fix folds into the current PR as a recorded scope extension, and a follow-up must justify itself against that (see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/scope-discipline.md`).
 - Objective is stable; path is provisional and should adapt to shipped evidence.
 - Flat tracker execution, fractal conceptual map.
 - Ask one question at a time, via `AskUserQuestion`, only when the answer changes seam, sequence, blocker, or outcome — see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`. At an approval point that authorizes tracker writes, name the mutations the go-ahead covers — create/edit the Epic, create/edit its children, and post the plan checkpoint — so auto-mode consent is informed rather than a bare "proceed".

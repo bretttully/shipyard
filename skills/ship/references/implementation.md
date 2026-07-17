@@ -2,6 +2,8 @@
 
 Follow ordered plan decisions. Resolve small details consistent with plan intent yourself and record them in `accepted_deviations`. A decision you cannot ground in plan/standards/code but that does not invalidate the plan returns `needs-decision` with an updated checkpoint; a new load-bearing fork or an invalidated contract returns `bail-to-spec`. Never prompt the user. Use `sy:sweep` for broad reconnaissance.
 
+An adjacent issue you surface mid-build that sits outside the plan's declared file set follows the same test: fold a small, low-risk fix into this branch as a recorded scope extension in `accepted_deviations` rather than filing a follow-up that loses the context you have now; defer only when it justifies its own ticket (see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/scope-discipline.md`).
+
 ## Delegated slice protocol
 
 Delegate only bounded, low-design-ambiguity slices:

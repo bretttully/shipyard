@@ -71,6 +71,7 @@ REQUIRED = {
     "skills/shared/references/image-inspection.md",
     "skills/shared/references/user-interaction.md",
     "skills/shared/references/write-integrity.md",
+    "skills/shared/references/scope-discipline.md",
     "skills/plan/references/new-objective.md",
     "skills/plan/references/reentry.md",
     "skills/plan/references/roadmap-shaping.md",
@@ -212,6 +213,7 @@ def check_invariants(errors: list[str]) -> None:
     explain = read("skills/explain/SKILL.md")
     user_interaction = read("skills/shared/references/user-interaction.md")
     write_integrity = read("skills/shared/references/write-integrity.md")
+    scope = read("skills/shared/references/scope-discipline.md")
 
     if "--match-head-commit" not in merge:
         fail("merge path missing atomic head guard (--match-head-commit)", errors)
@@ -262,6 +264,17 @@ def check_invariants(errors: list[str]) -> None:
     ):
         if "AskUserQuestion" not in text:
             fail(f"{name} skill must route user decisions through AskUserQuestion per user-interaction.md", errors)
+
+    if "scope extension" not in scope or "justify itself" not in scope:
+        fail("scope-discipline reference must define recorded scope extensions and the follow-up-justifies-itself default", errors)
+    if "scope-discipline.md" not in ship:
+        fail("ship invariants must reference scope-discipline (fix small adjacent findings in-branch, not as follow-ups)", errors)
+    if "scope-discipline.md" not in gate_ref or "scope extension" not in gate_ref:
+        fail("immutable-gate fix cycle must apply scope-discipline (fold-in vs defer, recorded scope extension)", errors)
+    if "scope-discipline.md" not in impl:
+        fail("build implementation must apply scope-discipline for small adjacent out-of-plan fixes", errors)
+    if "scope extension" not in gate:
+        fail("gate must treat a recorded scope extension like an accepted deviation, not scope-creep", errors)
 
     gate_fm = gate.split("---", 2)[1]
     if "Skill" not in gate_fm:
