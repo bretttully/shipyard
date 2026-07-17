@@ -36,33 +36,41 @@ acli jira workitem transition --key <ID> --status "$SY_IN_REVIEW_COLNAME" --yes
 
 (`--yes` only where the installed command supports it). Inspect the closure reason before treating a `done` issue as delivered — decomposed/superseded closure is not delivery.
 
+**Transition fallback.** When a transition is rejected (the target status is not reachable from the current state, or the name does not resolve), do not retry blind and do not treat the old status as acceptable: list the valid transitions from the current state and surface them —
+
+```bash
+python "${CLAUDE_PLUGIN_ROOT}/skills/tracker/jira/jira_rest.py" transitions <ID>
+```
+
+— then transition to the correct reachable target (or surface the workflow gap loudly if none maps to the requested canonical status).
+
 ## Rich text: Markdown → ADF
 
 Jira comments and descriptions are ADF. Stage the Markdown, convert, then write:
 
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/skills/tracker/jira/md_to_adf.py" .scratch/body.md > .scratch/body.adf.json
+python "${CLAUDE_PLUGIN_ROOT}/skills/tracker/jira/md_to_adf.py" .scratch/<ID>-body.md > .scratch/<ID>-body.adf.json
 ```
 
-Load `references/adf.md` for converter setup/verification.
+Namespace every staging file by the issue key it targets (`<ID>`; before a key exists — issue creation — use the parent key or a goal slug), matching the `.scratch/<ID>-ship-transcript.txt` convention: parallel sessions and successive writes must never clobber each other's staged bodies. Load `references/adf.md` for converter setup/verification.
 
 ## Verb implementations
 
 ```bash
 # create-issue  (epic)
 acli jira workitem create --project "${ACLI_PROJECT:?}" --type Epic \
-  --summary "<title>" --description-file .scratch/epic.adf.json
+  --summary "<title>" --description-file .scratch/<slug>-epic.adf.json
 
 # create-child  (task/bug under a parent)
 acli jira workitem create --project "${ACLI_PROJECT:?}" --type Task \
-  --parent <PARENT_ID> --summary "<title>" --description-file .scratch/task.adf.json
+  --parent <PARENT_ID> --summary "<title>" --description-file .scratch/<PARENT_ID>-task.adf.json
 
-# get-issue
+# get-issue  (first rung of the read ladder below)
 acli jira workitem view <ID> --fields '*all'
 acli jira workitem comment list --key <ID>
 
 # update-issue  (replace body)
-acli jira workitem edit --key <ID> --description-file .scratch/body.adf.json
+acli jira workitem edit --key <ID> --description-file .scratch/<ID>-body.adf.json
 
 # find-issues  (JQL against the configured project)
 acli jira workitem search --jql "project = ${ACLI_PROJECT:?} AND status = 'In Progress'"
@@ -71,12 +79,27 @@ acli jira workitem search --jql "project = ${ACLI_PROJECT:?} AND status = 'In Pr
 acli jira workitem assign --key <ID> --assignee @me
 
 # post-comment / post-log  (both are comments; post-log carries only fenced JSON)
-acli jira workitem comment create --key <ID> --body-file .scratch/comment.adf.json
+acli jira workitem comment create --key <ID> --body-file .scratch/<ID>-comment.adf.json
 
 # link-pr  (Jira dev-panel link is driven from the commit/PR; record the URL in a comment too)
 #   PRs surface in the Jira development panel when the branch/commit names the key.
 #   Post the PR URL as a comment so it is durable regardless of dev-panel wiring.
 ```
+
+### `get-issue` read ladder (acli → REST → MCP, never a silent empty read)
+
+`acli`'s `view --fields '*all'` truncates relational fields — parent, issue links, and labels can render empty even when set — and some field selections are rejected outright. When a field you need is missing/empty in the `acli` view, or the command rejects, fall through in order:
+
+1. **REST** — raw JSON, untruncated:
+
+   ```bash
+   python "${CLAUDE_PLUGIN_ROOT}/skills/tracker/jira/jira_rest.py" get <ID> --fields parent,issuelinks,labels,status,issuetype
+   python "${CLAUDE_PLUGIN_ROOT}/skills/tracker/jira/jira_rest.py" comment-get <ID> <COMMENT_ID>   # one full comment body
+   ```
+
+2. **Atlassian MCP** — when the MCP server is connected in this session, `getJiraIssue` (and its comment/transition siblings) is the last resort.
+
+If every rung fails, fail loudly with the last error. An empty read is never evidence the field is empty — relational reads (blockers, parents) drove real false negatives before this ladder existed.
 
 ### `add-dependency` (X blocked by Y) — use the REST helper
 
@@ -112,6 +135,24 @@ Jira supports native work-item attachments. Scan first (secrets), then upload wi
 ```bash
 python "${CLAUDE_PLUGIN_ROOT}/skills/tracker/jira/jira_rest.py" attach <ID> .scratch/<ID>-ship-transcript.txt
 ```
+
+Attachment lifecycle beyond upload (all resolve by filename with an exactly-one match rule; pass `--id` to disambiguate duplicates):
+
+```bash
+python "${CLAUDE_PLUGIN_ROOT}/skills/tracker/jira/jira_rest.py" attachment-download <ID> <FILENAME> [--output <PATH>]
+python "${CLAUDE_PLUGIN_ROOT}/skills/tracker/jira/jira_rest.py" attachment-update <ID> <FILE>     # replace-by-filename: deletes same-name attachments, re-uploads, verifies
+python "${CLAUDE_PLUGIN_ROOT}/skills/tracker/jira/jira_rest.py" attachment-delete <ID> <FILENAME> [--id <ATTACHMENT_ID>]
+```
+
+`attachment-delete` is destructive and `attachment-update` deletes before it uploads — confirm the target first; there is no undo.
+
+### `type-convert` (Task ↔ Epic) — best-effort, loud failure
+
+```bash
+python "${CLAUDE_PLUGIN_ROOT}/skills/tracker/jira/jira_rest.py" type-convert <ID> Epic   # or Task
+```
+
+Rewrites the work item's type in place and verifies by reading it back. Some site workflows restrict type changes (required fields, hierarchy rules); the helper then fails loudly rather than leaving the type silently unchanged — treat it as best-effort, and fall back to create-new + link + close-old when the workflow refuses. Irreversible side effects (parent links, board membership) follow the type; confirm before converting.
 
 ## References
 

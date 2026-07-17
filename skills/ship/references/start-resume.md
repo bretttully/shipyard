@@ -6,7 +6,8 @@ This phase runs as the `sy:ship-start` worker: it initializes or resumes ownersh
 2. Read parent Epic only enough for sibling interfaces/blockers; use `sy:sweep` for a large tail.
 3. Ship profile (model / effort / process tier) is a parent precondition verified before dispatch; if the running profile is below plan the parent stops and asks via `AskUserQuestion` (raise the profile / proceed at plan floor / other) per `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`. The profile floors worker models (may raise, never lower, so BUILD keeps its opus tier) and sets worker effort to match the work; it never lowers review effort (`sy:gate` stays max). Do not prompt the user from the worker.
 4. Resolve standards in a delegate (subagent running `/sy:standards resolve <task scope>`, added to `agents_used`) that returns only the retained contract — authority, implementation contract, primitives, risk lenses; rule-file reads stay out of the ship context.
-5. Load `.scratch/<task>-ship-state.yaml` from main checkout if present.
+5. Read durable cross-session memory — `python "${CLAUDE_PLUGIN_ROOT}/scripts/sy_memory.py" list` (or `search` on the tools/surfaces the task touches) per `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/memory.md`; a lesson that bears on the task enters the state brief as a known anchor.
+6. Load `.scratch/<task>-ship-state.yaml` from main checkout if present.
 
 Classify:
 
@@ -24,7 +25,7 @@ Suggest, as a single optional aside (not an `## Action needed` block, per `${CLA
 2. run the sibling/stacked-PR scan: list open PRs, local and remote branches, and existing worktrees that touch the same surface. Overlap with an open sibling or stacked PR is resolved before branching — coordinate with it, stack on it explicitly, or stop — and the scan result is recorded in state so later phases inherit it;
 3. check plan-base freshness: diff the plan's `PLAN_BASE_SHA` against the fresh target/integration branch (`origin/main` where that is the target). Unrelated drift → continue. Drift touching plan anchors/dependencies → inspect those changes before building. Material contract or architecture drift → stop and return to `/sy:spec`;
 4. branch from the fresh target/integration branch;
-5. create the dedicated build worktree in the sibling `<repo>-worktrees/` directory beside the repo (never inside it) and record its absolute path;
+5. create the dedicated build worktree under the worktree root `${SY_WORKTREE_ROOT:-<repo>-worktrees}` (default: the sibling directory beside the repo; never inside it) and record its absolute path;
 6. write local resume state:
 
 ```yaml

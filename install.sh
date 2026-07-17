@@ -35,6 +35,9 @@ fi
 if [[ -z "${SY_IMAGE_MODEL:-}" ]]; then
   echo "NOTE: set SY_IMAGE_MODEL in settings.json env; sy:img-inspector defaults to sonnet when unset." >&2
 fi
+if [[ -z "${SY_WORKTREE_ROOT:-}" ]]; then
+  echo "NOTE: SY_WORKTREE_ROOT unset; ship worktrees default to the sibling <repo>-worktrees/ directory." >&2
+fi
 
 cat <<EOF
 

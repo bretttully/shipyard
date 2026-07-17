@@ -12,7 +12,7 @@ Independently decide whether the supplied immutable change is safe to ship. Repo
 
 A pass here is a strong independent signal, not a correctness guarantee: a human backstop is retained while the gate runs in shadow mode, and a pass later shown wrong is recorded post-hoc as `gate_false_pass` in the ship metrics rather than papered over.
 
-Inputs: purpose/acceptance criteria; `REVIEW_BASE_SHA`; `REVIEWED_SHA`; isolated review worktree pinned to `REVIEWED_SHA`; standards authority/risk lenses or enough scope to invoke `/sy:standards review` lazily through `Skill`; verification obligations and the compact design contract (invariants, accepted deviations) when the plan defines them.
+Inputs: purpose/acceptance criteria; `REVIEW_BASE_SHA`; `REVIEWED_SHA`; isolated review worktree (under the caller's worktree root, `${SY_WORKTREE_ROOT:-<repo>-worktrees}`) pinned to `REVIEWED_SHA`; standards authority/risk lenses or enough scope to invoke `/sy:standards review` lazily through `Skill`; verification obligations and the compact design contract (invariants, accepted deviations) when the plan defines them.
 
 First verify worktree HEAD equals `REVIEWED_SHA`; otherwise return `BLOCKED: review scope moved`.
 

@@ -9,7 +9,7 @@ disable-model-invocation: true
 effort: max
 ---
 
-Turn this goal or work item into a **Task** (or **Bug** for a defect fix) containing everything a fresh `/sy:ship` session needs to land one coherent PR. Code work is read-only; tracker writes use the `tracker` skill (`/sy:tracker`). End at the approved active plan; do not implement.
+Turn this goal or work item into a **Task** (or **Bug** for a defect fix) containing everything a fresh `/sy:ship` session needs to land one coherent PR. Code work is read-only; tracker writes use the `tracker` skill (`/sy:tracker`). End at the approved active plan — or, when research invalidates the premise, at a shelve-with-evidence closure (§6); do not implement.
 
 Plan against fresh `origin/main` unless the user names another immutable base.
 
@@ -41,12 +41,13 @@ Draft Summary, Context/constraints, and Out of scope. Use Bug for a defect fix, 
 
 ### Existing Task
 
-Read its body/comments directly and preserve settled decisions. Delegate only large parent-Epic or PR tails to `sy:sweep`. Edit the body only when research changes framing. Ensure the parent Epic is `in-progress` when active work begins; the Task stays in `backlog` until its plan is approved (then `ready`, per step 6).
+Read its body/comments directly and preserve settled decisions. Delegate only large parent-Epic or PR tails to `sy:sweep`. Edit the body only when research changes framing. Ensure the parent Epic is `in-progress` when active work begins; the Task stays in `backlog` until its plan is approved (then `ready`, per step 7).
 
 ## 3. Resolve standards and deep research
 
 - Resolve standards in a delegate (subagent running `/sy:standards resolve <scope>`) that returns only the compact contract — authority, task-relevant constraints, primitives, risk lenses; the raw rule and doc reads stay out of the spec context, where standards loaded early would be re-paid on every later turn.
-- Deep research starts only after the §1 premise + prior-work check has survived; evidence against the premise found later still stops the spec rather than merely reshaping it.
+- Deep research starts only after the §1 premise + prior-work check has survived; evidence against the premise found later still stops the spec (see §6, shelving with evidence) rather than merely reshaping it.
+- Read durable cross-session memory early — `python "${CLAUDE_PLUGIN_ROOT}/scripts/sy_memory.py" list` (or `search` on the tools/surfaces the task touches) per `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/memory.md`; a lesson that bears on the task enters the plan as a known anchor.
 - Trace every load-bearing claim to code, current primary docs, or real data.
 - Use `sy:sweep` for breadth and `sy:trace` for one end-to-end path; verify decisive spans directly.
 - Pull representative data when shape/frequency matters.
@@ -89,7 +90,16 @@ For an existing `/sy:plan` leaf, post a `# SEAMS` comment describing pieces, int
 
 For a standalone objective, confirm via `AskUserQuestion` before promoting it to an Epic, then post the seams report and stop with `/sy:plan <epic>`.
 
-## 6. Capture exactly one active versioned plan
+## 6. Premise gone? Shelve: close with evidence, no plan
+
+Not every spec ends in a plan. When research shows the premise is already delivered, invalidated, or superseded — whether at the §1 prior-work check or from evidence surfacing later — the blessed terminal state is a shelve: the Task closes with evidence instead of acquiring a plan for work that should not ship. This is distinct from §5, where a sound premise is merely too big for one PR.
+
+1. Present the evidence as a status update, then close the turn with a single `AskUserQuestion` (shelve as described / keep researching / other), naming the mutations the go-ahead covers: post the evidence comment and set the Task's terminal status.
+2. Post a durable evidence comment on the Task: what was found, the decisive pointers (commits, PRs, work items, spans), and why no plan should exist.
+3. Set an **existing** status via the `tracker` skill — `done` when the premise was already delivered or the item should close, `backlog` when it is merely premature — never a new status; the evidence comment is what distinguishes this closure from delivery (decomposed/superseded/invalidated closure is not delivery).
+4. Capture the session per §8 as on every run.
+
+## 7. Capture exactly one active versioned plan
 
 Present the full plan for sign-off:
 

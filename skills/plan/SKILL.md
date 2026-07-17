@@ -29,6 +29,8 @@ $ARGUMENTS
 
 Read small cohesive evidence directly. Use `sy:sweep` for large code/ticket/PR/docs surfaces and `sy:seam` only for one unresolved boundary that changes roadmap shape. At most 3 depth agents in flight. Agent returns are compressed leads; verify decisive spans and own the cut.
 
+Read durable cross-session memory early — `python "${CLAUDE_PLUGIN_ROOT}/scripts/sy_memory.py" list` (or `search` on the tools/surfaces the objective touches) per `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/memory.md`; a lesson that bears on the objective enters the brief as a known anchor.
+
 Seed every agent prompt with known anchors — paths, symbols, entry points, keys — and name ground already covered; agents must not rediscover what the caller knows.
 
 Machine-facing agent briefs stay pointer-dense. Human-facing Epic maps and decision logs remain clear prose.

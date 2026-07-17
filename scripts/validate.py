@@ -51,6 +51,7 @@ REQUIRED = {
     "scripts/session_usage.py",
     "scripts/review_guard.py",
     "scripts/ci_poll.sh",
+    "scripts/sy_memory.py",
     "skills/tracker/SKILL.md",
     "skills/tracker/CONTRACT.md",
     "skills/tracker/jira/ADAPTER.md",
@@ -70,6 +71,7 @@ REQUIRED = {
     "skills/ship/references/handoff-accounting.md",
     "skills/ship/references/merge-accounting.md",
     "skills/shared/references/image-inspection.md",
+    "skills/shared/references/memory.md",
     "skills/shared/references/user-interaction.md",
     "skills/shared/references/write-integrity.md",
     "skills/shared/references/scope-discipline.md",
@@ -154,6 +156,7 @@ def check_no_home_paths(errors: list[str]) -> None:
 def check_seam(errors: list[str]) -> None:
     scan = _component_md(seam_only=True) + [
         ROOT / "scripts/session_usage.py", ROOT / "scripts/review_guard.py", ROOT / "scripts/ci_poll.sh",
+        ROOT / "scripts/sy_memory.py",
     ]
     for p in scan:
         text = p.read_text(encoding="utf-8")
@@ -295,6 +298,20 @@ def check_invariants(errors: list[str]) -> None:
     if "gate_false_pass" not in handoff or "human backstop" not in gate:
         fail("gate human-backstop note and ship metrics gate_false_pass field are required (shadow-run backstop)", errors)
 
+    for name, text in (("plan", plan), ("spec", spec), ("ship start", start)):
+        if "sy_memory.py" not in text or "memory.md" not in text:
+            fail(f"{name} must read durable cross-session memory back (sy_memory.py, per memory.md)", errors)
+    if "sy_memory.py" not in handoff or "memory.md" not in handoff:
+        fail("ship handoff retro must distill durable lessons into cross-session memory (sy_memory.py, per memory.md)", errors)
+    if "close with evidence" not in spec.lower() or "shelve" not in spec.lower():
+        fail("spec must bless the shelve terminal state (close with evidence, no plan)", errors)
+    for name, text in (
+        ("ship", ship), ("start-resume", start), ("implementation", impl),
+        ("immutable-gate", gate_ref), ("merge-accounting", merge),
+    ):
+        if "SY_WORKTREE_ROOT" not in text:
+            fail(f"{name} must resolve the worktree root via SY_WORKTREE_ROOT (sibling-directory default)", errors)
+
     gate_fm = gate.split("---", 2)[1]
     if "Skill" not in gate_fm:
         fail("gate agent must allow the Skill tool", errors)
@@ -360,7 +377,9 @@ def main() -> int:
 
     run_self_test("scripts/review_guard.py", errors)
     run_self_test("scripts/session_usage.py", errors)
+    run_self_test("scripts/sy_memory.py", errors)
     run_self_test("skills/tracker/github/gh_project.py", errors)
+    run_self_test("skills/tracker/jira/jira_rest.py", errors)
     run_self_test("scripts/ci_poll.sh", errors)
 
     if errors:
