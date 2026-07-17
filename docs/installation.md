@@ -36,7 +36,7 @@ claude plugin install sy@shipyard
 
 `claude plugin install` takes `<plugin>@<marketplace>`; here the plugin is `sy` and the marketplace is `shipyard` (the `name` in `marketplace.json`). Equivalently, run `/plugin` and enable **sy** from the `shipyard` marketplace in the interactive UI. Manage it later with `claude plugin list`, `claude plugin update sy`, and `claude plugin uninstall sy`.
 
-Only `--plugin-dir` (the one-session dev mode above) needs a local checkout. Either way, the commands are namespaced by the plugin name (`sy`): `/sy:plan`, `/sy:spec`, `/sy:ship`, `/sy:spike`, `/sy:pr`, `/sy:ci`.
+Only `--plugin-dir` (the one-session dev mode above) needs a local checkout. Either way, the commands are namespaced by the plugin name (`sy`): `/sy:plan`, `/sy:spec`, `/sy:ship`, `/sy:spike`, `/sy:pr`, `/sy:ci`, `/sy:explain`.
 
 ## `./install.sh` — validate and get load instructions
 

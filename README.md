@@ -44,7 +44,7 @@ Two convictions shape everything, and both exist to earn your trust in the outpu
 
 ### Spec
 
-`/sy:spec <task>` reads the ticket and the code, resolves the repo's engineering standards, and presents a complete plan for your approval: the approach and the strongest rejected alternative, ordered changes with file anchors, tests and acceptance criteria, and a verification obligation — a claim plus the named evidence that will prove it — for every risk lens the work activates. You approve before anything is built; the plan lands on the ticket as the single ACTIVE plan, stamped with the commit it was planned against.
+`/sy:spec <task>` reads the ticket and the code, resolves the repo's engineering standards, and presents a complete plan for your approval: the approach and the strongest rejected alternative, ordered changes with file anchors, tests and acceptance criteria, and a verification obligation — a claim plus the named evidence that will prove it — for every risk lens the work activates. You approve before anything is built; the plan lands on the ticket as the single ACTIVE plan, stamped with the commit it was planned against. Not every spec ends in a plan: when research shows the premise is already delivered, invalidated, or superseded, spec shelves the task with evidence instead of building on a premise that no longer holds.
 
 ![Verification obligations](docs/img/verification-obligations.png)
 
@@ -62,7 +62,11 @@ The workflow skills stay small and delegate expensive reads and builds to a flee
 
 The issue tracker is the one pluggable part. Core skills and agents speak a single [tracker contract](skills/tracker/CONTRACT.md) — canonical verbs, five lifecycle statuses (named per repo), and canonical types — and a thin adapter maps that to Jira or to GitHub Projects. `SY_TRACKER` selects one, and a validator keeps tracker-specific vocabulary out of every core file. The GitHub tracker needs **no organization**: it drives issue Type and Status as Projects v2 fields, which work the same on a personal board.
 
+Some lessons outlive a single ticket — a CLI flag with inverted semantics, a model that silently falls back to a default. Those go into a small, user-global memory store (`scripts/sy_memory.py`, one file per lesson plus a greppable index) rather than a ticket comment or a repo's `CLAUDE.md`. `/sy:plan` and `/sy:spec` read it during early research and `/sy:ship` at start; new lessons get written, at most a few at a time, during ship's retrospective. It is cross-repo by design, so a trap learned once does not have to be relearned in the next repo next month.
+
 ## Install and configure
+
+**Already running Claude Code?** Paste this and let it drive the setup: "Help me install and configure Shipyard in this repo. Read https://raw.githubusercontent.com/bretttully/shipyard/first-commit/agent-guide.md first, then walk me through it step by step."
 
 Shipyard is a plugin, so it is loaded, not symlinked:
 
@@ -96,7 +100,7 @@ claude plugin install sy@shipyard             # or run /plugin and enable "sy"
 shipyard/
   .claude-plugin/plugin.json      # name: sy, version 1.0.0
   hooks/hooks.json                # review guard + usage accounting (plugin-level)
-  scripts/                        # tracker-agnostic: validate.py, session_usage.py, review_guard.py
+  scripts/                        # tracker-agnostic: validate.py, session_usage.py, review_guard.py, sy_memory.py, ci_poll.sh
   agents/                         # sweep seam trace slice hunt gate img-inspector explain-author ship-{start,build,gate}
   skills/
     plan/ spec/ ship/ spike/ pr/ ci/ standards/ explain/

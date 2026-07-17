@@ -32,6 +32,8 @@ Re-enter later with `/sy:plan <epic>` to read what shipped since the last checkp
 
 You approve the plan before anything is built. On approval it lands on the ticket as the single ACTIVE execution plan, stamped with the commit it was planned against, the task moves to `ready`, and the plan ends with a `/sy:ship` kickoff and a ship profile (`model / effort / process tier`).
 
+Not every spec ends in a plan. When research shows the premise is already delivered, invalidated, or superseded, spec shelves the task instead: it posts the decisive evidence as a comment and closes the task rather than producing a plan for work that should not ship.
+
 ## 3. Ship
 
 ```text
@@ -66,3 +68,7 @@ claude -n "ship PROJ-123"            "/sy:ship PROJ-123"
 ## What lands on your tracker
 
 Every shipped task leaves a paper trail on its ticket, each record its own comment: a human-readable `# Ship retrospective`, a standalone `# Claude Code usage` JSON log, a standalone `# Claude Code ship metrics` JSON log, and (on the full process tier) a secret-scanned session transcript — attached to the work item on Jira, or a private gist linked from the metrics comment on GitHub. `/sy:plan` and `/sy:spec` archive their sessions the same way. There is no manual `/export`.
+
+## Cross-session memory
+
+Separately from any ticket, Shipyard keeps a small, user-global memory store — one Markdown file per durable lesson (a CLI flag with inverted semantics, a silent model fallback, and the like) plus a greppable index. `/sy:plan` and `/sy:spec` read it during early research, and `/sy:ship` reads it at start; new lessons get written, at most a few per run, during ship's retrospective. It lives at `SY_MEMORY_DIR` (default `~/.claude/shipyard/memory`, see [`settings.md`](settings.md)) and is cross-repo by design, so a trap learned once does not have to be relearned in the next repo next month.

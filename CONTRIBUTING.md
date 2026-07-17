@@ -8,7 +8,7 @@ Contributions are small, verifiable, and keep the tracker seam clean. This guide
 1. Edit the skills, agents, docs, or adapter files.
 2. Validate: `python scripts/validate.py` — checks frontmatter, the agent return contracts, the promises skills make to each other, and the script self-tests. It must pass.
 3. Load the plugin locally to try it: `claude --plugin-dir /path/to/shipyard`.
-4. Commands are namespaced by the plugin name (`sy`): `/sy:plan`, `/sy:spec`, `/sy:ship`, `/sy:spike`, `/sy:pr`, `/sy:ci`.
+4. Commands are namespaced by the plugin name (`sy`): `/sy:plan`, `/sy:spec`, `/sy:ship`, `/sy:spike`, `/sy:pr`, `/sy:ci`, `/sy:explain`.
 
 Keep prose (READMEs, roadmaps, docs) clear and unwrapped; keep machine-facing text (agent briefs, contracts, JSON logs) terse and structured.
 
