@@ -156,7 +156,7 @@ def _ensure_index() -> None:
     directory = root()
     index = directory / INDEX_NAME
     lessons = _lesson_paths(directory)
-    if not lessons:
+    if not lessons and not index.is_file():
         return
     entries = len(re.findall(r"^- \[", index.read_text(encoding="utf-8"), re.M)) if index.is_file() else -1
     if entries != len(lessons):
@@ -189,6 +189,10 @@ def _self_test() -> None:
             assert listing.count("- [") == 2, "index must rebuild on read when missing"
             assert "Review bot login differs per API surface" in listing
             assert search("no-such-token-anywhere") == []
+            for lesson in _lesson_paths(Path(tmp)):
+                lesson.unlink()
+            assert "(no entries)" in index_text(), "stale index must not serve ghost entries after hand-deletion"
+            assert search("model override") == []
         finally:
             if old is None:
                 os.environ.pop("SY_MEMORY_DIR", None)

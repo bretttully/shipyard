@@ -145,6 +145,6 @@ The ship profile never lowers review or build: `sy:gate` remains frontier tier a
 
 The bar: a fresh session reading the Task and sole ACTIVE plan can implement and open the PR without missing design decisions.
 
-## 7. Capture the session
+## 8. Capture the session
 
 Delegate a subagent to render this `/sy:spec` session's transcript and attach it to the Task, every run, following the `tracker` skill's attachment flow (`$KIND=spec`). The reasoning trail behind the plan lands on the ticket with no manual `/export`, and the rendered text stays out of this context. Subagent delegation is primary; when the delegation itself is denied under auto-mode, the identical render-and-attach may run inline as an explicit permitted fallback — the same authorized-alternate-route case of the denied-write boundary in `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/write-integrity.md` — with the rendered text still handled by path only and never read back into this context. That inline path is deterministic-scan-only (no contextual review, to keep the transcript out of this context), so treat a clean scan there as evidence, not proof, per the `tracker` skill's attachment flow. If neither path completes, surface it loudly rather than skipping the attachment.
