@@ -85,7 +85,7 @@ claude plugin install sy@shipyard             # or run /plugin and enable "sy"
 
 - exactly one execution plan is ACTIVE per task; a newer plan supersedes the old one explicitly;
 - plans record the commit they were written against; building on a materially drifted base is refused;
-- every agent that writes code gets its own isolated worktree, kept beside the repo so parallel work never collides;
+- every agent that writes code gets its own isolated worktree, kept beside the repo (or wherever `SY_WORKTREE_ROOT` points) so parallel work never collides;
 - `sy:gate` reviews pinned base/head commits in an isolated, read-only checkout, and every bug candidate must survive an adversarial refutation before it is reported;
 - the PR head, the CI-green commit, and the reviewed commit must be identical before handoff or merge;
 - nothing merges without direct user authorization.

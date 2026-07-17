@@ -38,13 +38,13 @@ You approve the plan before anything is built. On approval it lands on the ticke
 /sy:ship <task>
 ```
 
-`/sy:ship` builds the approved plan and takes it to a reviewable PR. It branches from fresh `origin/main` into its own worktree (first checking that `main` has not drifted from the commit the plan assumed), implements the plan in order, gets CI green, and has the independent `sy:gate` agent review the exact pushed commits in an isolated, read-only checkout. Fixes go back into the build worktree, and every new commit starts a new review scope. When the PR head, the CI-green commit, and the reviewed commit are the same commit, ship posts the evidence to the ticket, moves it to `in-review`, and stops.
+`/sy:ship` builds the approved plan and takes it to a reviewable PR. It branches from fresh `origin/main` into its own worktree, created under the sibling `<repo>-worktrees/` directory by default or under `SY_WORKTREE_ROOT` when set (first checking that `main` has not drifted from the commit the plan assumed), implements the plan in order, gets CI green, and has the independent `sy:gate` agent review the exact pushed commits in an isolated, read-only checkout. Fixes go back into the build worktree, and every new commit starts a new review scope. When the PR head, the CI-green commit, and the reviewed commit are the same commit, ship posts the evidence to the ticket, moves it to `in-review`, and stops.
 
 `/sy:ship` never merges on its own.
 
 ## 4. Merge
 
-Merging needs your explicit word. When you authorize it, ship re-verifies that the head still equals the CI-green and reviewed commits, checks whether the target branch moved since review, and merges atomically. It then sets the ticket `done` and removes only the worktrees it created. What shipped feeds the next `/sy:plan` round.
+Merging needs your explicit word. When you authorize it, ship re-verifies that the head still equals the CI-green and reviewed commits, checks whether the target branch moved since review, and merges atomically. It then sets the ticket `done` and removes only the worktrees it created under the worktree root. What shipped feeds the next `/sy:plan` round.
 
 ## Supporting commands
 

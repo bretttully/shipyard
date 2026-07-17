@@ -10,7 +10,7 @@ An adjacent issue you surface mid-build that sits outside the plan's declared fi
 
 Delegate only bounded, low-design-ambiguity slices:
 
-1. create and record the dedicated slice branch/worktree from the integration base, in the sibling `<repo>-worktrees/` directory (never inside the repo);
+1. create and record the dedicated slice branch/worktree from the integration base, under the worktree root `${SY_WORKTREE_ROOT:-<repo>-worktrees}` (default: the sibling directory beside the repo; never inside it);
 2. prompt `sy:slice` with plan step, anchors, acceptance criteria, sibling interfaces, and relevant standards contract;
 3. add `sy:slice` to local `agents_used` accounting state;
 4. receive committed SHA and compact evidence brief;

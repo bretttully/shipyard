@@ -47,13 +47,17 @@ Markdown passthrough — GitHub renders Markdown natively. No conversion step.
 `gh` uses the current repo unless `-R "$SY_GH_REPO"` is given; include it when `SY_GH_REPO` is set. `GHP` below is `python "${CLAUDE_PLUGIN_ROOT}/skills/tracker/github/gh_project.py"`.
 
 ```bash
+# Staging files are namespaced by the issue they target (a slug before the issue exists,
+# the parent number for children), matching .scratch/<ID>-ship-transcript.txt: parallel
+# sessions and successive writes must never clobber each other's staged bodies.
+
 # create-issue  (epic): create the issue, then put it on the board with a Type (and initial Status)
-url="$(gh issue create --title "<title>" --body-file .scratch/body.md)"   # prints the URL (opaque ID)
+url="$(gh issue create --title "<title>" --body-file .scratch/<slug>-body.md)"   # prints the URL (opaque ID)
 $GHP set-type   --project "$SY_GH_PROJECT" --issue "$url" --type epic
 $GHP set-status --project "$SY_GH_PROJECT" --issue "$url" --status backlog
 
 # create-child  (task/bug under a parent issue number) — native sub-issue via --parent
-url="$(gh issue create --title "<title>" --body-file .scratch/body.md --parent <PARENT_NUMBER>)"
+url="$(gh issue create --title "<title>" --body-file .scratch/<PARENT_NUMBER>-body.md --parent <PARENT_NUMBER>)"
 $GHP set-type --project "$SY_GH_PROJECT" --issue "$url" --type task
 
 # get-issue: native fields from the issue + Type/Status from the board item
@@ -66,7 +70,7 @@ $GHP list --project "$SY_GH_PROJECT" --status in-progress  # active leaves
 gh issue list --search "<query>" --json number,title,state,parent,url
 
 # update-issue  (replace body)
-gh issue edit <NUMBER> --body-file .scratch/body.md
+gh issue edit <NUMBER> --body-file .scratch/<NUMBER>-body.md
 
 # assign  (self)
 gh issue edit <NUMBER> --add-assignee @me
@@ -81,7 +85,7 @@ gh issue edit <X_NUMBER> --add-blocked-by <Y_NUMBER>
 gh issue edit <NUMBER> --add-label decomposed
 
 # post-comment / post-log  (post-log body is only fenced JSON)
-gh issue comment <NUMBER> --body-file .scratch/comment.md
+gh issue comment <NUMBER> --body-file .scratch/<NUMBER>-comment.md
 
 # link-pr  -> reference the issue from the PR body as a plain "#<NUMBER>" (NOT a closing keyword);
 #            the done-transition is owned by native project automation on merge, not by the PR text.

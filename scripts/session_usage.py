@@ -403,11 +403,25 @@ def _indent(text: str) -> str:
     return "  " + text.replace("\n", "\n  ")
 
 
-def _render_row(record: dict[str, Any], tool_names: dict[str, str], lines: list[str]) -> None:
+def _render_row(
+    record: dict[str, Any], tool_names: dict[str, str], pending_interjections: dict[str, int], lines: list[str]
+) -> None:
+    ts = str(record.get("timestamp") or "")[:19].replace("T", " ")
+    if record.get("type") == "queue-operation":
+        text = record.get("content")
+        if isinstance(text, str) and text.strip():
+            key = text.strip()
+            if record.get("operation") == "enqueue":
+                pending_interjections[key] = pending_interjections.get(key, 0) + 1
+                lines.append(f"[{ts}] USER (queued interjection)")
+                lines.append(text.rstrip())
+            elif record.get("operation") == "remove" and pending_interjections.get(key):
+                pending_interjections[key] -= 1
+                lines.append(f"[{ts}] (queued interjection above was cancelled before delivery)")
+        return
     message = record.get("message")
     if not isinstance(message, dict):
         return
-    ts = str(record.get("timestamp") or "")[:19].replace("T", " ")
     content = message.get("content")
     if record.get("type") == "assistant":
         for block in _content_blocks(content):
@@ -433,8 +447,12 @@ def _render_row(record: dict[str, Any], tool_names: dict[str, str], lines: list[
                 lines.append(f"[{ts}] RESULT ({name})")
                 lines.append(_indent(body))
             elif kind == "text" and str(block.get("text", "")).strip():
+                text = str(block["text"])
+                if pending_interjections.get(text.strip()):
+                    pending_interjections[text.strip()] -= 1
+                    continue
                 lines.append(f"[{ts}] USER")
-                lines.append(str(block["text"]).rstrip())
+                lines.append(text.rstrip())
 
 
 def _first_timestamp(path: Path) -> str:
@@ -482,9 +500,10 @@ def render(main: Path, *, task: str | None) -> str:
     for path, header in sections:
         out += ["=" * 78, header, "=" * 78]
         tool_names: dict[str, str] = {}
+        pending_interjections: dict[str, int] = {}
         warnings: list[str] = []
         for record in _iter_jsonl(path, warnings):
-            _render_row(record, tool_names, out)
+            _render_row(record, tool_names, pending_interjections, out)
         out.append("")
     return "\n".join(out) + "\n"
 
@@ -502,22 +521,57 @@ def _self_test() -> None:
             subdir = root / "s1" / "subagents"
             subdir.mkdir(parents=True)
             sub = subdir / "agent-a.jsonl"
-            main.write_text(
-                json.dumps(
-                    {
-                        "type": "assistant",
-                        "timestamp": "2026-07-09T10:00:00Z",
-                        "message": {
-                            "id": "m1",
-                            "model": "main-model",
-                            "content": [{"type": "text", "text": "hello world"}],
-                            "usage": {"input_tokens": 10, "output_tokens": 2},
-                        },
-                    }
-                )
-                + "\n",
-                encoding="utf-8",
-            )
+            main_records = [
+                {
+                    "type": "assistant",
+                    "timestamp": "2026-07-09T10:00:00Z",
+                    "message": {
+                        "id": "m1",
+                        "model": "main-model",
+                        "content": [{"type": "text", "text": "hello world"}],
+                        "usage": {"input_tokens": 10, "output_tokens": 2},
+                    },
+                },
+                {
+                    "type": "queue-operation",
+                    "operation": "enqueue",
+                    "timestamp": "2026-07-09T10:00:01Z",
+                    "sessionId": "s1",
+                    "content": "please also check the logs",
+                },
+                {
+                    "type": "user",
+                    "timestamp": "2026-07-09T10:00:02Z",
+                    "message": {"content": [{"type": "text", "text": "please also check the logs"}]},
+                },
+                {
+                    "type": "queue-operation",
+                    "operation": "remove",
+                    "timestamp": "2026-07-09T10:00:03Z",
+                    "sessionId": "s1",
+                    "content": "cancelled interjection",
+                },
+                {
+                    "type": "queue-operation",
+                    "operation": "enqueue",
+                    "timestamp": "2026-07-09T10:00:04Z",
+                    "sessionId": "s1",
+                    "content": "please continue",
+                },
+                {
+                    "type": "queue-operation",
+                    "operation": "remove",
+                    "timestamp": "2026-07-09T10:00:05Z",
+                    "sessionId": "s1",
+                    "content": "please continue",
+                },
+                {
+                    "type": "user",
+                    "timestamp": "2026-07-09T10:00:06Z",
+                    "message": {"content": [{"type": "text", "text": "please continue"}]},
+                },
+            ]
+            main.write_text("".join(json.dumps(r) + "\n" for r in main_records), encoding="utf-8")
             # Deliberately omit agent_type from the transcript: attribution comes from
             # the same hook ledger used by real Shipyard agents.
             sub.write_text(
@@ -592,6 +646,12 @@ def _self_test() -> None:
             assert "MAIN SESSION s1" in rendered
             assert "hello world" in rendered
             assert "SUBAGENT slice" in rendered
+            assert rendered.count("(queued interjection)") == 2
+            assert rendered.count("please also check the logs") == 1
+            assert "cancelled interjection" not in rendered
+            assert rendered.count("cancelled before delivery") == 1
+            assert rendered.count("please continue") == 2, "cancelled queue must not eat the later genuine user turn"
+            assert "[2026-07-09 10:00:06] USER" in rendered, "genuine user turn after enqueue+remove must render"
         finally:
             LEDGER_ROOT = old_ledger_root
 
