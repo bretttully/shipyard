@@ -1,5 +1,7 @@
 # Shipyard — `/sy:plan → /sy:spec → /sy:ship`
 
+![Shipyard: a roadmap plotted once, above a dry dock that repeats plan → build → launch per task](docs/img/background_1.png)
+
 Shipyard is a Claude Code plugin that takes an objective from "we should build this" to a merged, independently reviewed pull request — with the whole trail recorded on your issue tracker, **Jira or GitHub Projects**. You plan a roadmap once, then repeat a short loop per task: spec it, ship it, merge it. Claude does the building and the reviewing; you approve the plan and authorize the merge.
 
 ## What you get
@@ -109,9 +111,11 @@ shipyard/
       jira/    ADAPTER.md + md_to_adf.py jira_rest.py references/
       github/  ADAPTER.md + gh_project.py
   docs/
-    installation.md settings.md usage.md github-setup.md smoke_github.sh img/
+    installation.md settings.md usage.md github-setup.md design-language.md smoke_github.sh img/
 ```
 
 ## Contributing
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md). Run `python scripts/validate.py` before every PR; the seam and contract-completeness checks are not optional.
+
+![The night bridge](docs/img/background_2.png)
