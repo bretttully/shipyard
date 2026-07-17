@@ -21,7 +21,7 @@ $ARGUMENTS
 - One Task/Bug ≈ one coherent PR. Keep far work conceptual until evidence justifies decomposition.
 - Objective is stable; path is provisional and should adapt to shipped evidence.
 - Flat tracker execution, fractal conceptual map.
-- Ask one question at a time, via `AskUserQuestion`, only when the answer changes seam, sequence, blocker, or outcome — see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`.
+- Ask one question at a time, via `AskUserQuestion`, only when the answer changes seam, sequence, blocker, or outcome — see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`. At an approval point that authorizes tracker writes, name the mutations the go-ahead covers — create/edit the Epic, create/edit its children, and post the plan checkpoint — so auto-mode consent is informed rather than a bare "proceed".
 
 ## Scope and delegation
 
@@ -46,6 +46,6 @@ Load only the reference for the current state. Do not preload mutually exclusive
 
 ## Completion bar
 
-The Epic body must show North Star, conceptual horizon ladder, completed branches, current active set (≤4) with keys/kickoffs, queued conceptual work, critical path, blockers, and parallel-safe set. Every planning run that changes the tracker adds one decision-log delta ending in a `Plan checkpoint` footer, and delegates a subagent to render this session's transcript and attach it to the Epic, following the `tracker` skill's attachment flow (`$KIND=plan`).
+The Epic body must show North Star, conceptual horizon ladder, completed branches, current active set (≤4) with keys/kickoffs, queued conceptual work, critical path, blockers, and parallel-safe set. Every planning run that changes the tracker adds one decision-log delta ending in a `Plan checkpoint` footer, and delegates a subagent to render this session's transcript and attach it to the Epic, following the `tracker` skill's attachment flow (`$KIND=plan`). A roadmap entry or checkpoint that shipped evidence later overrules is corrected on its own surface, not left stale — the retroactive-honesty invariant in `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/write-integrity.md`; and when the transcript-attach delegation is denied under auto-mode, the identical render-and-attach may run inline as that reference's authorized-alternate-route fallback, the rendered text handled by path only — deterministic scan only, no contextual review, so treat a clean result as evidence, not proof, per the `tracker` skill's attachment flow.
 
 When every horizon is delivered and every child is `done` for delivered reasons, set the Epic `done`.

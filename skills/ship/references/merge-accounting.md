@@ -1,6 +1,6 @@
 # Explicit merge path
 
-Load only after the user directly authorizes merge.
+Load only after the user directly authorizes merge. The authorization is the informed go-ahead front-loaded in the handoff `## Action needed` block, which named the follow-on mutations: this path will merge the verified head, attach the scanned transcript, and set the task done. Execute exactly those three and no more; a mutation the consent point did not name is not covered by this authorization.
 
 ## Revalidate
 
