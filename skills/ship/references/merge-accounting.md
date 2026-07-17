@@ -34,6 +34,6 @@ gh pr merge <pr> --match-head-commit "$VERIFIED_HEAD_SHA" <chosen strategy flags
 
 Then verify merged state, set the task `done` via the `tracker` skill, and remove only build/slice/review worktrees and branches recorded by this run.
 
-Close with the end-of-run hygiene assertion: every worktree recorded by this run is gone from `git worktree list`, and every background poller PID recorded by this run is dead (`kill -0 <pid>` fails). A leftover is a loud failure to clean and re-assert, never something to close over.
+Close with the end-of-run hygiene assertion: every worktree recorded by this run is gone from `git worktree list`, and no poller from this run is still alive (`pgrep -f "ci_poll.sh poll <this run's PR>"` returns nothing). A leftover is a loud failure to clean and re-assert, never something to close over.
 
 Explicit merge authorization never waives stale CI or review coverage.

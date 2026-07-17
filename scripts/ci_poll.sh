@@ -23,15 +23,21 @@ main() {
 
 poll() {
     local pr="${1:?usage: ci_poll.sh poll <pr-number-or-branch> [interval_s] [timeout_s]}"
-    local interval="${2:-30}" timeout="${3:-1800}" start="$SECONDS"
+    local interval="${2:-30}" timeout="${3:-1800}" start="$SECONDS" failed_once=0
     while true; do
         local rc=0 out
         out="$(gh pr checks "$pr" 2>&1)" || rc=$?
         case "$(_classify "$rc" "$out")" in
             pass) echo "ci_poll: checks green for $pr"; return 0 ;;
             none) echo "ci_poll: no checks reported for $pr; nothing pending"; return 0 ;;
-            fail) echo "ci_poll: checks terminal with failures for $pr (gh exit $rc)" >&2; return 1 ;;
-            pending) ;;
+            fail)
+                # retry once so a transient gh/network blip cannot end a long wait early
+                if (( failed_once )); then
+                    echo "ci_poll: checks terminal with failures for $pr (gh exit $rc)" >&2
+                    return 1
+                fi
+                failed_once=1 ;;
+            pending) failed_once=0 ;;
         esac
         if (( SECONDS - start >= timeout )); then
             echo "ci_poll: timed out after ${timeout}s with checks still pending for $pr" >&2
@@ -65,6 +71,24 @@ FAKE
     local rc=0
     CI_POLL_FAKE_STATE="$tmp/state" PATH="$tmp:$PATH" poll 99 0 0 > /dev/null 2>&1 || rc=$?
     [[ "$rc" == 2 ]]
+
+    cat > "$tmp/gh" <<'FAKE'
+#!/usr/bin/env bash
+n="$(cat "$CI_POLL_FAKE_STATE")"
+echo $((n + 1)) > "$CI_POLL_FAKE_STATE"
+if (( n < 1 )); then echo "transient network blip"; exit 6; fi
+echo "all checks were successful"
+FAKE
+    echo 0 > "$tmp/state"
+    CI_POLL_FAKE_STATE="$tmp/state" PATH="$tmp:$PATH" poll 99 0 60 > /dev/null
+
+    cat > "$tmp/gh" <<'FAKE'
+#!/usr/bin/env bash
+echo "some checks failed"; exit 1
+FAKE
+    rc=0
+    CI_POLL_FAKE_STATE="$tmp/state" PATH="$tmp:$PATH" poll 99 0 60 > /dev/null 2>&1 || rc=$?
+    [[ "$rc" == 1 ]]
 
     rm -rf "$tmp"
     echo "ci_poll self-test passed"

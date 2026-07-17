@@ -47,6 +47,7 @@ accepted_deviations: []
 phase_checkpoint: null
 ship_session_id: <current session id if available>
 ship_session_started_at: <timestamp>
+sibling_scan: <step-2 scan result: branches, open PRs, worktrees>
 agents_used: []
 ```
 
