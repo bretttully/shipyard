@@ -21,10 +21,11 @@ Suggest, as a single optional aside (not an `## Action needed` block, per `${CLA
 ## Fresh run
 
 1. fetch origin;
-2. check plan-base freshness: diff the plan's `PLAN_BASE_SHA` against fresh `origin/main`. Unrelated drift → continue. Drift touching plan anchors/dependencies → inspect those changes before building. Material contract or architecture drift → stop and return to `/sy:spec`;
-3. branch from fresh `origin/main`;
-4. create the dedicated build worktree in the sibling `<repo>-worktrees/` directory beside the repo (never inside it) and record its absolute path;
-5. write local resume state:
+2. run the sibling/stacked-PR scan: list open PRs, local and remote branches, and existing worktrees that touch the same surface. Overlap with an open sibling or stacked PR is resolved before branching — coordinate with it, stack on it explicitly, or stop — and the scan result is recorded in state so later phases inherit it;
+3. check plan-base freshness: diff the plan's `PLAN_BASE_SHA` against the fresh target/integration branch (`origin/main` where that is the target). Unrelated drift → continue. Drift touching plan anchors/dependencies → inspect those changes before building. Material contract or architecture drift → stop and return to `/sy:spec`;
+4. branch from the fresh target/integration branch;
+5. create the dedicated build worktree in the sibling `<repo>-worktrees/` directory beside the repo (never inside it) and record its absolute path;
+6. write local resume state:
 
 ```yaml
 task: TASK-123
@@ -49,7 +50,7 @@ ship_session_started_at: <timestamp>
 agents_used: []
 ```
 
-6. set the Task `in-progress` via the `tracker` skill, self-assign, and ensure the parent Epic is `in-progress`.
+7. set the Task `in-progress` via the `tracker` skill, self-assign, and ensure the parent Epic is `in-progress`.
 
 The state file is local resume state, not shared truth. Never prune unrelated worktrees or paths. `phase_checkpoint` is the active worker's idempotent resume anchor (e.g. a slice manifest with per-slice status), passed to any continuation worker.
 

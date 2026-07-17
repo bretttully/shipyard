@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Shared token-free CI poller for ship phases. Launch in the background (run_in_background);
+# it sleeps between checks and exits when nothing is pending, so waiting costs no reasoning turns.
+# jq-free by design and talks only to the code host. Every ship phase invokes this instead of
+# hand-writing its own poller.
+#
+# Usage:
+#   ci_poll.sh poll <pr-number-or-branch> [interval_s=30] [timeout_s=1800]
+#   ci_poll.sh self-test
+#
+# Exit codes for poll: 0 = checks green or none reported (nothing pending);
+# 1 = checks terminal with failures; 2 = timed out while still pending.
+set -euo pipefail
+
+main() {
+    local cmd="${1:-}"
+    case "$cmd" in
+        poll) shift; poll "$@" ;;
+        self-test) self_test ;;
+        *) sed -n '2,12p' "$0" >&2; exit 2 ;;
+    esac
+}
+
+poll() {
+    local pr="${1:?usage: ci_poll.sh poll <pr-number-or-branch> [interval_s] [timeout_s]}"
+    local interval="${2:-30}" timeout="${3:-1800}" start="$SECONDS"
+    while true; do
+        local rc=0 out
+        out="$(gh pr checks "$pr" 2>&1)" || rc=$?
+        case "$(_classify "$rc" "$out")" in
+            pass) echo "ci_poll: checks green for $pr"; return 0 ;;
+            none) echo "ci_poll: no checks reported for $pr; nothing pending"; return 0 ;;
+            fail) echo "ci_poll: checks terminal with failures for $pr (gh exit $rc)" >&2; return 1 ;;
+            pending) ;;
+        esac
+        if (( SECONDS - start >= timeout )); then
+            echo "ci_poll: timed out after ${timeout}s with checks still pending for $pr" >&2
+            return 2
+        fi
+        sleep "$interval"
+    done
+}
+
+self_test() {
+    [[ "$(_classify 0 'all checks were successful')" == pass ]]
+    [[ "$(_classify 8 'some checks are still pending')" == pending ]]
+    [[ "$(_classify 1 'some checks failed')" == fail ]]
+    [[ "$(_classify 1 "no checks reported on the 'branch' branch")" == none ]]
+
+    local tmp
+    tmp="$(mktemp -d)"
+    cat > "$tmp/gh" <<'FAKE'
+#!/usr/bin/env bash
+n="$(cat "$CI_POLL_FAKE_STATE")"
+echo $((n + 1)) > "$CI_POLL_FAKE_STATE"
+if (( n < 2 )); then echo "some checks are still pending"; exit 8; fi
+echo "all checks were successful"
+FAKE
+    chmod +x "$tmp/gh"
+
+    echo 0 > "$tmp/state"
+    CI_POLL_FAKE_STATE="$tmp/state" PATH="$tmp:$PATH" poll 99 0 60 > /dev/null
+
+    echo 0 > "$tmp/state"
+    local rc=0
+    CI_POLL_FAKE_STATE="$tmp/state" PATH="$tmp:$PATH" poll 99 0 0 > /dev/null 2>&1 || rc=$?
+    [[ "$rc" == 2 ]]
+
+    rm -rf "$tmp"
+    echo "ci_poll self-test passed"
+}
+
+_classify() {
+    local rc="$1" out="$2"
+    if [[ "$out" == *"no checks reported"* ]]; then echo none
+    elif [[ "$rc" == 0 ]]; then echo pass
+    elif [[ "$rc" == 8 ]]; then echo pending
+    else echo fail
+    fi
+}
+
+main "$@"
