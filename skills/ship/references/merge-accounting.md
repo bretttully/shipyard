@@ -14,6 +14,16 @@ Load only after the user directly authorizes merge. The authorization is the inf
 
 Follow the `tracker` skill's attachment flow for the deterministic `gitleaks` scan, contextual review, redaction, upload, and verification.
 
+## Bounded fix before merge
+
+When revalidation or the authorizing user surfaces one small bounded fix (a typo, a doc nit, a trivial CI repair), it may land without restarting the full cycle through the bounded-fix → focused-delta-gate → merge sub-flow:
+
+1. apply the fix in the recorded build worktree and push;
+2. dispatch a focused delta `sy:gate` with `REVIEW_BASE_SHA` = the prior `REV_REVIEWED_SHA` and `REVIEWED_SHA` = the new head — valid only when the prior reviewed head is the immutable base and the new head is the immutable head; a rebase or base change voids the delta and re-enters GATE for full coverage;
+3. wait for CI on the new head with the shared poller (`${CLAUDE_PLUGIN_ROOT}/scripts/ci_poll.sh poll <pr>`, run in the background), then merge against the new verified head.
+
+The delta gate runs at the same resolved frontier review model and max effort as any other review scope: this sub-flow bounds the scope reviewed, never the reviewer.
+
 ## Merge
 
 Merge atomically against the verified head:
@@ -23,5 +33,7 @@ gh pr merge <pr> --match-head-commit "$VERIFIED_HEAD_SHA" <chosen strategy flags
 ```
 
 Then verify merged state, set the task `done` via the `tracker` skill, and remove only build/slice/review worktrees and branches recorded by this run.
+
+Close with the end-of-run hygiene assertion: every worktree recorded by this run is gone from `git worktree list`, and no poller from this run is still alive (`pgrep -f "ci_poll.sh poll <this run's PR>"` returns nothing). A leftover is a loud failure to clean and re-assert, never something to close over.
 
 Explicit merge authorization never waives stale CI or review coverage.

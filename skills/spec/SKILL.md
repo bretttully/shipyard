@@ -28,6 +28,7 @@ Ask one question at a time, via `AskUserQuestion`, only when research cannot set
 ## 1. Surface scan and interview
 
 - Fetch and inspect the intended base.
+- Run the premise + prior-work check before deep archaeology: confirm the goal's premise still holds on the intended base, and search for existing, shipped, duplicate, or sibling work — tracker `find-issues` over summary/label plus a code/PR search. A premise already delivered, invalidated, or owned by an open sibling stops here with that evidence (correct or close the item via the `tracker` skill) rather than producing a plan for work that should not ship.
 - Map entry points directly or through `sy:sweep` according to size.
 - Establish goal, definition of done, boundaries, constraints, and priorities.
 - Suggest, as a single optional aside (not a gate), that the user run `/rename spec: <goal-slug>` or `/rename spec <task> <slug>` once nameable.
@@ -45,6 +46,7 @@ Read its body/comments directly and preserve settled decisions. Delegate only la
 ## 3. Resolve standards and deep research
 
 - Resolve standards in a delegate (subagent running `/sy:standards resolve <scope>`) that returns only the compact contract — authority, task-relevant constraints, primitives, risk lenses; the raw rule and doc reads stay out of the spec context, where standards loaded early would be re-paid on every later turn.
+- Deep research starts only after the §1 premise + prior-work check has survived; evidence against the premise found later still stops the spec rather than merely reshaping it.
 - Trace every load-bearing claim to code, current primary docs, or real data.
 - Use `sy:sweep` for breadth and `sy:trace` for one end-to-end path; verify decisive spans directly.
 - Pull representative data when shape/frequency matters.

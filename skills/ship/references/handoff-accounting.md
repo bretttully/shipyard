@@ -67,6 +67,7 @@ Post a second small comment containing only a JSON object under `# Claude Code s
   "review_findings_accepted": 0,
   "review_findings_rejected": 0,
   "human_review_defects": 0,
+  "gate_false_pass": null,
   "post_merge_defect": null,
   "rollback": null,
   "lead_time_seconds": null,
@@ -75,6 +76,8 @@ Post a second small comment containing only a JSON object under `# Claude Code s
 ```
 
 Use `null` for unknown values. Never infer metrics.
+
+`gate_false_pass` is unknowable at ship time: always post it as `null`, then set it post-hoc — correcting the same comment per `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/write-integrity.md` — when a human or CI later finds a defect the gate passed. It is the shadow-run signal for whether the gate can be trusted without its human backstop; the backstop is retained until that record says otherwise.
 
 ## 4. Transcript attachment (full tier only)
 
@@ -93,4 +96,4 @@ Subagent delegation is the primary path. When it is denied under auto-mode — t
 
 ## Handoff
 
-Task stays `in-review` until merge. Report PR URL, tracker status, acceptance state, coverage SHAs/requested+observed gate models, usage/metrics comment status, transcript attachment status, and owned-worktree status as a status update, then close the turn with an isolated `## Action needed` block (per `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`) stating the PR is ready and merge awaits your explicit authorization — never let that wait get lost among the status facts above it. Front-load the follow-on mutations in that same block so consent is informed and no later write is a surprise: name that on your go-ahead the run will merge the verified head, attach the scanned transcript, and set the task done. Under auto-mode this is the one consent point covering all three mutations, so it must enumerate them rather than authorize a bare "merge".
+Task stays `in-review` until merge. Before reporting, run this phase's end-of-run hygiene assertion: no poller from this run is still alive (`pgrep -f "ci_poll.sh poll <this run's PR>"` returns nothing), and this run's recorded worktrees all exist while nothing this run created is unrecorded (recorded build/review worktrees remain until an authorized merge cleans them; the primary checkout and any sibling run's worktrees are out of scope; a mismatch in this run's set is drift to fix loudly, not to report around). Report PR URL, tracker status, acceptance state, coverage SHAs/requested+observed gate models, usage/metrics comment status, transcript attachment status, and owned-worktree/hygiene status as a status update, then close the turn with an isolated `## Action needed` block (per `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`) stating the PR is ready and merge awaits your explicit authorization — never let that wait get lost among the status facts above it. Front-load the follow-on mutations in that same block so consent is informed and no later write is a surprise: name that on your go-ahead the run will merge the verified head, attach the scanned transcript, and set the task done. Under auto-mode this is the one consent point covering all three mutations, so it must enumerate them rather than authorize a bare "merge".

@@ -28,6 +28,8 @@ $ARGUMENTS
 - `sy:gate` reviews an isolated worktree pinned to exact base/head SHAs.
 - Current PR HEAD must equal CI-green SHA and reviewed SHA before handoff or merge.
 - Model tier is a quality floor: each phase worker runs at least its declared tier (BUILD stays at least opus) and the ship profile may raise but never lower it, so the parent passes no model override that drops a worker below its default. Effort is the profile's cost lever: the parent applies the plan's effort to workers to match the work but never lowers review effort (`sy:gate` stays max).
+- Cost-scaling never touches the reviewer: for Trivial-priority tickets the ship profile may scale BUILD effort and the process tier down, but `sy:gate` keeps its frontier tier, max effort, and full coverage on every path — including the trivial-diff and bounded-fix paths.
+- After merge authorization, one small bounded fix may land through the authorized bounded-fix → focused-delta-gate → merge sub-flow in `references/merge-accounting.md`: the delta review is valid only when the prior reviewed head is the immutable base and the new head is the immutable head; anything broader re-enters GATE.
 - Resolve gate model explicitly and pass it as the Agent invocation's actual model override; record requested and transcript-observed models separately.
 - Token accounting must aggregate the main ship transcript **and all nested subagent transcripts**.
 - Images stay out of the long-running context: figures/screenshots/plots are inspected only through short-lived `sy:img-inspector` subagents that return text verdicts, and no image `Read` appears in a BUILD or GATE transcript (see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/image-inspection.md`).

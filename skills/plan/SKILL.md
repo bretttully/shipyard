@@ -17,6 +17,7 @@ $ARGUMENTS
 ## Invariants
 
 - Work backwards: North Star → capabilities → dependency order → near executable leaves.
+- Premise + prior-work check comes first: before shaping, validate the objective's premise and search for existing, shipped, duplicate, or sibling work (tracker `find-issues` plus a code/PR search); prior delivery or duplication reshapes or ends the roadmap rather than re-planning it.
 - At most **4** leaves may be active `/sy:spec`-ready/in-spec/in-ship/in-review at once.
 - One Task/Bug ≈ one coherent PR. Keep far work conceptual until evidence justifies decomposition.
 - Not every issue surfaced mid-ship earns its own leaf: a small, adjacent, low-risk fix folds into the current PR as a recorded scope extension, and a follow-up must justify itself against that (see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/scope-discipline.md`).

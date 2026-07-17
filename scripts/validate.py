@@ -50,6 +50,7 @@ REQUIRED = {
     "hooks/hooks.json",
     "scripts/session_usage.py",
     "scripts/review_guard.py",
+    "scripts/ci_poll.sh",
     "skills/tracker/SKILL.md",
     "skills/tracker/CONTRACT.md",
     "skills/tracker/jira/ADAPTER.md",
@@ -151,7 +152,9 @@ def check_no_home_paths(errors: list[str]) -> None:
 
 
 def check_seam(errors: list[str]) -> None:
-    scan = _component_md(seam_only=True) + [ROOT / "scripts/session_usage.py", ROOT / "scripts/review_guard.py"]
+    scan = _component_md(seam_only=True) + [
+        ROOT / "scripts/session_usage.py", ROOT / "scripts/review_guard.py", ROOT / "scripts/ci_poll.sh",
+    ]
     for p in scan:
         text = p.read_text(encoding="utf-8")
         for pattern in TRACKER_TOKENS:
@@ -276,6 +279,22 @@ def check_invariants(errors: list[str]) -> None:
     if "scope extension" not in gate:
         fail("gate must treat a recorded scope extension like an accepted deviation, not scope-creep", errors)
 
+    build_agent = read("agents/ship-build.md")
+    if "prior-work check" not in spec or "prior-work check" not in plan:
+        fail("spec and plan must run the early premise + prior-work check before deep research/shaping", errors)
+    if "load-bearing plan facts" not in impl or "load-bearing plan facts" not in build_agent:
+        fail("BUILD must verify load-bearing plan facts before executing (needs-decision/bail-to-spec on mismatch)", errors)
+    if "content-QA" not in impl:
+        fail("build implementation must include the deterministic content-QA grep for leaked wrapper tokens", errors)
+    if "undispositioned actionable finding" not in gate_ref:
+        fail("immutable-gate fix cycle must state the stopping rule (no undispositioned actionable finding)", errors)
+    if "drift re-check" not in gate_ref.lower():
+        fail("immutable-gate loop must include the periodic target-branch drift re-check", errors)
+    if "ci_poll.sh" not in gate_ref:
+        fail("immutable-gate must route CI waits through the shared scripts/ci_poll.sh poller", errors)
+    if "gate_false_pass" not in handoff or "human backstop" not in gate:
+        fail("gate human-backstop note and ship metrics gate_false_pass field are required (shadow-run backstop)", errors)
+
     gate_fm = gate.split("---", 2)[1]
     if "Skill" not in gate_fm:
         fail("gate agent must allow the Skill tool", errors)
@@ -289,8 +308,9 @@ def run_self_test(rel: str, errors: list[str]) -> None:
     script = ROOT / rel
     if not script.is_file():
         return
+    runner = ["bash", str(script)] if script.suffix == ".sh" else [sys.executable, str(script)]
     proc = subprocess.run(
-        [sys.executable, str(script), "self-test"],
+        [*runner, "self-test"],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False,
     )
     if proc.returncode != 0:
@@ -341,6 +361,7 @@ def main() -> int:
     run_self_test("scripts/review_guard.py", errors)
     run_self_test("scripts/session_usage.py", errors)
     run_self_test("skills/tracker/github/gh_project.py", errors)
+    run_self_test("scripts/ci_poll.sh", errors)
 
     if errors:
         print("Shipyard validation FAILED:", file=sys.stderr)
