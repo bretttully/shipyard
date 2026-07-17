@@ -13,7 +13,7 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/session_usage.py export \
   --output .scratch/$KEY-$KIND-transcript-$(date -u +%Y%m%d%H%M).txt
 ```
 
-`$SESSION_ID` is the current session id; `$KIND` is `ship`, `spec`, or `plan`. The renderer truncates bulky tool output and strips raw-JSONL noise, so the file stays audit-readable. Do the render, scan, and upload from a delegate so the rendered text never enters the caller's context, and run it as late as the session allows so the captured tail is maximal. `/ship` attaches on the `full` process tier; `/spec` and `/plan` attach every run, to the Task and the Epic respectively.
+`$SESSION_ID` is the current session id; `$KIND` is `ship`, `spec`, or `plan`. The renderer truncates bulky tool output and strips raw-JSONL noise, so the file stays audit-readable. Prefer running the render, scan, and upload from a delegate so the rendered text never enters the caller's context; when that delegation is denied under auto-mode, running them inline via direct Bash is a permitted fallback, provided the rendered transcript is still never read back into the caller's context. Run it as late as the session allows so the captured tail is maximal. `/ship` attaches on the `full` process tier; `/spec` and `/plan` attach every run, to the Task and the Epic respectively.
 
 ## Secret scan before upload
 
