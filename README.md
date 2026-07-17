@@ -66,7 +66,7 @@ Some lessons outlive a single ticket — a CLI flag with inverted semantics, a m
 
 ## Install and configure
 
-**Already running Claude Code?** Paste this and let it drive the setup: "Help me install and configure Shipyard in this repo. Read https://raw.githubusercontent.com/bretttully/shipyard/first-commit/agent-guide.md first, then walk me through it step by step."
+**Already running Claude Code?** Paste this and let it drive the setup: "Help me install and configure Shipyard in this repo. Read https://raw.githubusercontent.com/bretttully/shipyard/main/agent-guide.md first, then walk me through it step by step."
 
 Shipyard is a plugin, so it is loaded, not symlinked:
 
