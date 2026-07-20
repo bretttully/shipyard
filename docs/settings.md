@@ -2,7 +2,7 @@
 
 Shipyard is configured **per repository**, through the `env` block of that repo's `.claude/settings.json`. Claude Code sets those variables for any session run in the repo, and every Shipyard skill, agent, and helper reads them from the environment. Because the config lives in the repo, different repos on one machine can use different trackers, boards, column names, and reviewer models with no global state — the same machine can drive a Jira repo and a GitHub repo side by side.
 
-This page is the complete reference for every knob. For the one-time GitHub Projects board and field setup that the GitHub variables point at, see [`github-setup.md`](github-setup.md).
+This page is the complete reference for every knob. For the one-time GitHub Projects board and field setup that the GitHub variables point at, see [`github-setup.md`](github-setup.md). If you installed Shipyard with `--scope project` (see [`installation.md`](installation.md#choose-an-install-scope)), the `env` block below lives in the very same `.claude/settings.json` as the plugin's `enabledPlugins` entry — one tracked file declaring both "this repo runs Shipyard" and "configured like this," though a fresh clone still needs the marketplace itself known (also covered there) before either takes effect.
 
 ## Every setting
 

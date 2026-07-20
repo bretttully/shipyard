@@ -20,23 +20,48 @@ The plugin is available only for that invocation — nothing is registered.
 
 Persistent installs come from a **marketplace**: a directory or repo that contains a `.claude-plugin/marketplace.json` listing one or more plugins. This repo ships one (it lists the `sy` plugin at its root), so it is its own marketplace. Add the marketplace, then install the plugin from it — you can do this straight from GitHub without cloning, or from a local checkout.
 
-**From GitHub (no clone).** `claude plugin marketplace add` accepts a GitHub `owner/repo` shorthand (or a full `https://`/`git@` URL); Claude Code clones it for you. Append `@<ref>` to pin a branch or tag, and private repos authenticate with your existing git credentials (`gh auth login`, SSH agent, or a credential helper).
+**From GitHub (no clone).** `claude plugin marketplace add` accepts a GitHub `owner/repo` shorthand (or a full `https://`/`git@` URL); Claude Code clones it for you. Append `@<ref>` to pin a branch or tag, and private repos authenticate with your existing git credentials (`gh auth login`, SSH agent, or a credential helper). `marketplace add` itself always registers globally (`~/.claude/plugins/known_marketplaces.json`) — it just makes the catalog visible; scope is chosen at `install`, below.
 
 ```bash
 claude plugin marketplace add bretttully/shipyard   # registers the marketplace, named "shipyard"
-claude plugin install sy@shipyard                   # install the plugin from it
+claude plugin install sy@shipyard --scope project   # install the plugin, scoped to this repo
 ```
 
 **From a local checkout.** Point the same command at the directory instead:
 
 ```bash
 claude plugin marketplace add /path/to/shipyard
-claude plugin install sy@shipyard
+claude plugin install sy@shipyard --scope project
 ```
 
-`claude plugin install` takes `<plugin>@<marketplace>`; here the plugin is `sy` and the marketplace is `shipyard` (the `name` in `marketplace.json`). Equivalently, run `/plugin` and enable **sy** from the `shipyard` marketplace in the interactive UI. Manage it later with `claude plugin list`, `claude plugin update sy`, and `claude plugin uninstall sy`.
+`claude plugin install` takes `<plugin>@<marketplace>`; here the plugin is `sy` and the marketplace is `shipyard` (the `name` in `marketplace.json`). Equivalently, run `/plugin`, go to **Discover**, and choose a scope in the interactive UI. Manage it later with `claude plugin list`, `claude plugin update sy`, and `claude plugin uninstall sy`.
 
 Only `--plugin-dir` (the one-session dev mode above) needs a local checkout. Either way, the commands are namespaced by the plugin name (`sy`): `/sy:plan`, `/sy:spec`, `/sy:ship`, `/sy:spike`, `/sy:pr`, `/sy:ci`, `/sy:explain`.
+
+### Choose an install scope
+
+`claude plugin install` takes an install scope. It defaults to `user` — read that default carefully, since it is *not* repo-scoped:
+
+| Scope | Flag | Settings file | Who it declares intent for |
+|---|---|---|---|
+| `project` (recommended here) | `--scope project` | this repo's `.claude/settings.json` | every collaborator who clones the repo — checked into version control, alongside the `SY_*` config in [`settings.md`](settings.md) |
+| `local` | `--scope local` | this repo's `.claude/settings.local.json` | just you, in this repo only — gitignored |
+| `user` | *(none — the default)* | `~/.claude/settings.json` | you, in **every** project on this machine, not just this one |
+
+`project` is the natural fit for Shipyard: it is already configured per repository (see [`settings.md`](settings.md)), so putting the plugin declaration and the `SY_*` env block in the same tracked `.claude/settings.json` keeps one file as the source of truth for "this repo runs Shipyard, configured like this."
+
+**`--scope project` alone does not make a fresh clone work.** It writes `enabledPlugins: ["sy@shipyard"]` — an intent — but a collaborator whose machine has never run `marketplace add` has no `shipyard` marketplace to resolve that name against. Close that gap by also adding `extraKnownMarketplaces` to the same `.claude/settings.json`, pointing at this repo, so the marketplace itself travels with the clone:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "shipyard": { "source": { "source": "github", "repo": "bretttully/shipyard" } }
+  },
+  "enabledPlugins": ["sy@shipyard"]
+}
+```
+
+Even then, a collaborator who trusts the repo folder gets the marketplace registered automatically but still confirms the plugin install themselves — Claude Code shows the exact `claude plugin install` command and will not run it silently, since a plugin can execute arbitrary code. There is no zero-touch path, only a guided one. See [Configure team marketplaces](https://code.claude.com/docs/en/discover-plugins#configure-team-marketplaces).
 
 ## `./install.sh` — validate and get load instructions
 

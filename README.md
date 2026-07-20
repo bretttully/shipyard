@@ -68,17 +68,23 @@ Some lessons outlive a single ticket — a CLI flag with inverted semantics, a m
 
 ## Install and configure
 
-**Already running Claude Code?** Paste this and let it drive the setup: "Help me install and configure Shipyard in this repo. Read https://raw.githubusercontent.com/bretttully/shipyard/main/agent-guide.md first, then walk me through it step by step."
+**Already running Claude Code?** Paste this and let it drive the setup:
+
+```text
+Help me install and configure Shipyard in this repo. Read https://raw.githubusercontent.com/bretttully/shipyard/main/agent-guide.md first, then walk me through it step by step.
+```
 
 Shipyard is a plugin, so it is loaded, not symlinked:
 
 ```bash
-claude --plugin-dir /path/to/shipyard         # this session only
+claude --plugin-dir /path/to/shipyard               # this session only
 
 # persistent: this repo ships a marketplace manifest, so add it, then install the plugin
-claude plugin marketplace add bretttully/shipyard  # a GitHub owner/repo (cloned for you) or a local path
-claude plugin install sy@shipyard             # or run /plugin and enable "sy"
+claude plugin marketplace add bretttully/shipyard   # a GitHub owner/repo (cloned for you) or a local path
+claude plugin install sy@shipyard --scope project   # shared with this repo via .claude/settings.json (recommended)
 ```
+
+`--scope project` writes that choice into this repo's own `.claude/settings.json` — the same file the `SY_*` config below lives in — instead of only your personal, global config. That's the right default for a team repo, but it declares intent, not the marketplace itself: a fresh clone still needs `shipyard` registered as a known marketplace and a one-time install confirmation from each collaborator; see [`docs/installation.md`](docs/installation.md#choose-an-install-scope) for the full team-rollout story. Drop the flag and Claude Code installs to **user** scope instead: every project on your machine, not just this one. `--scope local` is the middle ground: just you, this repo only, gitignored.
 
 `./install.sh` validates the plugin and prints these instructions with a tracker-aware preflight. The details live in the docs:
 
