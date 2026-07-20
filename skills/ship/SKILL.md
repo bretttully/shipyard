@@ -1,0 +1,71 @@
+---
+name: ship
+description: >-
+  Execute one fully planned Task to a reviewable PR with isolated writers,
+  immutable independent review, fresh CI/review coverage, and durable accounting.
+argument-hint: "<task>"
+disable-model-invocation: true
+---
+
+Execute one planned Task to a reviewable PR. Never merge automatically. Explicit merge authorization enters `references/merge-accounting.md`.
+
+$ARGUMENTS
+
+## Invariants
+
+- Exactly one `# Execution Plan vN` is ACTIVE; otherwise stop for `/sy:spec`.
+- Check plan-base freshness before building: material drift between `PLAN_BASE_SHA` and the ship base returns to `/sy:spec`.
+- Resolve standards before code.
+- The process tier (`full|light`) scales accounting records, never CI/review coverage.
+- Resolve tracker blockers before branching; decomposed/superseded closure is not delivery.
+- Read small cohesive surfaces directly; delegate large/verbose work — standards resolution, verbose verification (test/lint/type runs), and CI triage all count as verbose, and every added delegate enters `agents_used`. At most 3 depth agents in flight.
+- START, BUILD, and GATE each run as disposable autonomous worker subagents (`sy:ship-start`/`sy:ship-build`/`sy:ship-gate`); the parent is a thin dispatcher owning durable state (state file, worktrees, PR/tracker identity), the HANDOFF retro/accounting, MERGE, and all user interaction.
+- Workers never prompt the user; each returns `done`, `needs-decision`, `bail-to-spec`, or `blocked` per the worker contract. The parent resolves `needs-decision` from plan/standards/code first and asks you via `AskUserQuestion` only when genuinely ambiguous, then dispatches a fresh continuation worker from the checkpoint.
+- Checkpoints are slice/step-granular and idempotent: a continuation re-does no committed, pushed, or tracker-posted work and re-creates no recorded worktree. A phase exceeding a few `needs-decision` returns escalates to `/sy:spec` as underspecified.
+- A review or build finding that is small, adjacent, and low-risk is fixed in-branch as a recorded scope extension, not deferred to a follow-up: the plan's declared scope is a default contract, and a follow-up must justify itself against the in-branch fix (see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/scope-discipline.md`).
+- Every writable delegate gets a caller-created, recorded worktree.
+- Worktrees live under the worktree root `${SY_WORKTREE_ROOT:-<repo>-worktrees}/<branch>` — by default the sibling directory beside the repo (e.g. `/path/to/myrepo` → `/path/to/myrepo-worktrees/<branch>`), overridable via `SY_WORKTREE_ROOT` in the repo's settings env — never nested inside the working tree; an in-tree worktree pollutes the main checkout's status, search, and diffs.
+- `sy:gate` reviews an isolated worktree pinned to exact base/head SHAs.
+- Current PR HEAD must equal CI-green SHA and reviewed SHA before handoff or merge.
+- Model tier is a quality floor: each phase worker runs at least its declared tier (BUILD stays at least opus) and the ship profile may raise but never lower it, so the parent passes no model override that drops a worker below its default. Effort is the profile's cost lever: the parent applies the plan's effort to workers to match the work but never lowers review effort (`sy:gate` stays max).
+- Cost-scaling never touches the reviewer: for Trivial-priority tickets the ship profile may scale BUILD effort and the process tier down, but `sy:gate` keeps its frontier tier, max effort, and full coverage on every path — including the trivial-diff and bounded-fix paths.
+- After merge authorization, one small bounded fix may land through the authorized bounded-fix → focused-delta-gate → merge sub-flow in `references/merge-accounting.md`: the delta review is valid only when the prior reviewed head is the immutable base and the new head is the immutable head; anything broader re-enters GATE.
+- Resolve gate model explicitly and pass it as the Agent invocation's actual model override; record requested and transcript-observed models separately.
+- Token accounting must aggregate the main ship transcript **and all nested subagent transcripts**.
+- Images stay out of the long-running context: figures/screenshots/plots are inspected only through short-lived `sy:img-inspector` subagents that return text verdicts, and no image `Read` appears in a BUILD or GATE transcript (see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/image-inspection.md`).
+- Tracker machine logs are small standalone JSON comments; never bury usage or metrics JSON inside retrospectives or plan comments.
+- Talking to you follows exactly one of three modes per turn — status update, `AskUserQuestion`, or an isolated `## Action needed` block — never blended; see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/user-interaction.md`.
+- Mandated external writes obey write integrity: a posted record later overruled or found wrong is corrected on its own surface, and a denied write is never rerouted through another tool/path to force it through — surfaced loudly instead. Under auto-mode these are the operator's only safeguard against a stale or forced write; see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/write-integrity.md`.
+
+## Compression boundary
+
+Agent-to-agent returns use each agent's compact return contract, and a return backs its load-bearing claims with checkable evidence pointers. The parent trusts an evidence-backed brief and spot-checks decisive spans rather than re-deriving ground truth; it re-verifies in full only a load-bearing claim the brief leaves unbacked. Seed every agent prompt with known anchors — paths, symbols, plan step, keys — and name ground already covered; agents must not rediscover what the caller knows. Human-facing tracker/PR artifacts remain clear prose; machine logs remain compact JSON.
+
+## Worker contract
+
+The parent dispatches each of START, BUILD, and GATE (and any resumed segment) to its worker agent (`sy:ship-start`/`sy:ship-build`/`sy:ship-gate`), seeded with the phase procedure reference and the compact state brief; it never runs those procedures inline. HANDOFF and MERGE run in the parent — the retro needs cross-phase knowledge and MERGE needs the live worktrees and your authorization — with their verbose reads, including the transcript render, delegated. A worker runs autonomously and never blocks on long external state (CI, deploys) by polling in-context or self-resuming a monitor: it waits with a token-free background poller or returns `blocked` with a checkpoint. It returns exactly one:
+
+- `done` — phase complete; updated state brief (SHAs, PR, `agents_used`, `accepted_deviations`) with checkable evidence backing every load-bearing claim.
+- `needs-decision` — an idempotent checkpoint plus a question brief: what was attempted, why blocked, the options, and the plan/standards spans bearing on it.
+- `bail-to-spec` — the plan's contract or architecture is invalidated; reason and offending anchors.
+- `blocked` — external cause (merge authorization, infrastructure); what is required.
+
+The parent advances on `done`; resolves `needs-decision` from plan/standards/code and dispatches a continuation worker from the checkpoint, asking via `AskUserQuestion` only when the choice is genuinely ambiguous; stops for `/sy:spec` on `bail-to-spec`; and surfaces `blocked` to you as an `## Action needed` block naming the external cause. Parent-owned throughout: user interaction, durable-state ownership, the START profile guard, and HANDOFF and MERGE orchestration.
+
+## State router
+
+Classify first, then load only the needed procedure:
+
+```text
+START     initialize/resume ownership       → ship-start worker · references/start-resume.md
+BUILD     implement/integrate plan          → ship-build worker · references/implementation.md
+GATE      draft PR, CI, immutable review     → ship-gate  worker · references/immutable-gate.md
+HANDOFF   retro, usage, transcript, metrics  → parent · references/handoff-accounting.md (scan delegated)
+MERGE     direct user merge authorization    → parent · references/merge-accounting.md
+```
+
+The parent classifies state, dispatches the matching phase to a worker, and acts on the return per the worker contract. Do not preload mutually exclusive procedures; a worker loads only its own.
+
+## Completion bar
+
+Normal completion is a reviewable PR with current acceptance evidence, green CI and independent review covering the same head, Task `in-review`, human retrospective, standalone JSON usage/metrics comments, and (full tier) scanned transcript attachment. Then stop at handoff.
