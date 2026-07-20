@@ -12,6 +12,7 @@ This page is the complete reference for every knob. For the one-time GitHub Proj
 | `SY_FRONTIER_MODEL` | both | no | `fable` | The model `sy:gate` uses for the independent review. A quality floor, not a cost dial — set it to your strongest available model. |
 | `SY_FRONTIER_FALLBACK` | both | no | `opus` | The model the reviewer falls back to once if the frontier model cannot run (spend cap, rate limit, or a refusal). If the fallback also fails, ship returns `blocked` rather than promoting an unreviewed commit. |
 | `SY_IMAGE_MODEL` | both | no | `sonnet` | The model `sy:img-inspector` uses to look at figures/screenshots/plots and return a text verdict, so image tokens stay out of the long-running context. A quality floor, not a cost dial. |
+| `SY_DEBATE_MODEL` | both | no | `opus` | The model `sy:debate` and its `sy:debater` dispatches use to pressure-test a genuinely contested `/sy:plan`/`/sy:spec` fork. A quality floor, not a cost dial — raise it (e.g. to your `SY_FRONTIER_MODEL`) for a fork whose blast radius justifies the extra cost. |
 | `SY_WORKTREE_ROOT` | both | no | `<repo>-worktrees` beside the repo | The directory `/sy:ship` creates its isolated build/slice/review worktrees in (`$SY_WORKTREE_ROOT/<branch>`). Default is the sibling directory beside the repo (`/path/to/myrepo` → `/path/to/myrepo-worktrees/`); it is never inside the working tree. |
 | `SY_MEMORY_DIR` | both | no | `~/.claude/shipyard/memory` | Where the durable cross-session memory (`scripts/sy_memory.py`) keeps its one-file-per-lesson store and greppable index. User-global and cross-repo by design — set it only to relocate the store. |
 | `SY_BACKLOG_COLNAME` | both | **yes** | — | Your board/workflow name for the `backlog` column (queued, not yet specced). |
@@ -93,4 +94,4 @@ Shipyard never passes tokens as command-line arguments.
 
 ## Model routing
 
-Leave `CLAUDE_CODE_SUBAGENT_MODEL` **unset**. It overrides model routing for every subagent and takes precedence over `SY_FRONTIER_MODEL` and `SY_IMAGE_MODEL`, so setting it would silently reroute the independent reviewer and the image inspector off their intended models. `./install.sh` warns if it is set.
+Leave `CLAUDE_CODE_SUBAGENT_MODEL` **unset**. It overrides model routing for every subagent and takes precedence over `SY_FRONTIER_MODEL`, `SY_IMAGE_MODEL`, and `SY_DEBATE_MODEL`, so setting it would silently reroute the independent reviewer, the image inspector, and the debate off their intended models. `./install.sh` warns if it is set.

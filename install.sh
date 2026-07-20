@@ -27,13 +27,16 @@ command -v gitleaks >/dev/null 2>&1 || \
   echo "NOTE: gitleaks not installed; transcript attachment stops before publish until a deterministic scanner is available." >&2
 
 if [[ -n "${CLAUDE_CODE_SUBAGENT_MODEL:-}" ]]; then
-  echo "WARNING: CLAUDE_CODE_SUBAGENT_MODEL is set; it overrides model routing and would reroute the reviewer and the image inspector. Unset it." >&2
+  echo "WARNING: CLAUDE_CODE_SUBAGENT_MODEL is set; it overrides model routing and would reroute the reviewer, the image inspector, and the debate. Unset it." >&2
 fi
 if [[ -z "${SY_FRONTIER_MODEL:-}" ]]; then
   echo "NOTE: set SY_FRONTIER_MODEL in settings.json env; gate defaults to fable when unset." >&2
 fi
 if [[ -z "${SY_IMAGE_MODEL:-}" ]]; then
   echo "NOTE: set SY_IMAGE_MODEL in settings.json env; sy:img-inspector defaults to sonnet when unset." >&2
+fi
+if [[ -z "${SY_DEBATE_MODEL:-}" ]]; then
+  echo "NOTE: set SY_DEBATE_MODEL in settings.json env; sy:debate defaults to opus when unset." >&2
 fi
 if [[ -z "${SY_WORKTREE_ROOT:-}" ]]; then
   echo "NOTE: SY_WORKTREE_ROOT unset; ship worktrees default to the sibling <repo>-worktrees/ directory." >&2

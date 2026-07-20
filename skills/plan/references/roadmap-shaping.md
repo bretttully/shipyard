@@ -1,5 +1,9 @@
 # Roadmap shaping
 
+## Contested shape? Debate before the ladder
+
+Before building the ladder, check whether the objective's shape or a load-bearing premise is a genuine fork rather than settled by research — see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/debate.md` for the trigger bar and dispatch. When it clears that bar, dispatch `sy:debate` and let the user steer the fork before it gets baked into the ladder below.
+
 ## Find seams
 
 Locate low-coupling cut points and real dependency order. Use parallel `sy:sweep` briefs for large surfaces; escalate only genuinely unresolved boundaries to `sy:seam`.

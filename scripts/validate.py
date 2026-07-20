@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 EXPECTED_AGENTS = {
     "sweep", "seam", "trace", "slice", "hunt", "gate", "ship-start", "ship-build", "ship-gate",
-    "img-inspector", "explain-author",
+    "img-inspector", "explain-author", "debate", "debater",
 }
 EXPECTED_SKILLS = {"plan", "spec", "ship", "spike", "pr", "ci", "standards", "tracker", "explain"}
 FORBIDDEN_OLD_NAMES = {"explore-sonnet", "seam-scout", "path-tracer", "slice-builder", "bug-hunter", "rev-gate"}

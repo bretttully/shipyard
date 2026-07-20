@@ -1,6 +1,6 @@
-# Shipyard — `/sy:plan → /sy:spec → /sy:ship`
-
 ![Shipyard: a roadmap plotted once, above a dry dock that repeats plan → build → launch per task](docs/img/background_1.png)
+
+# Shipyard — `/sy:plan → /sy:spec → /sy:ship`
 
 Shipyard is a Claude Code plugin that takes an objective from "we should build this" to a merged, independently reviewed pull request — with the whole trail recorded on your issue tracker, **Jira or GitHub Projects**. You plan a roadmap once, then repeat a short loop per task: spec it, ship it, merge it. Claude does the building and the reviewing; you approve the plan and authorize the merge.
 
@@ -40,13 +40,13 @@ Two convictions shape everything, and both exist to earn your trust in the outpu
 
 ### Plan
 
-`/sy:plan` interviews you one question at a time, maps the code with read-only agents, and writes a living roadmap onto one Epic. Executable work becomes direct child tasks, each sized to one coherent PR; at most four are active at once, and everything further out stays as text until it is close enough to spec. Re-enter with `/sy:plan <epic>` to read what shipped and reshape the roadmap.
+`/sy:plan` interviews you one question at a time, maps the code with read-only agents, and writes a living roadmap onto one Epic. Executable work becomes direct child tasks, each sized to one coherent PR; at most four are active at once, and everything further out stays as text until it is close enough to spec. A genuinely contested fork in the roadmap's shape — two comparably strong paths, expensive to reverse — is pressure-tested first as a bounded proposer/adversary debate, and you steer the disagreement rather than the plan quietly picking one. Re-enter with `/sy:plan <epic>` to read what shipped and reshape the roadmap.
 
 ![The roadmap model](docs/img/jira-roadmap.png)
 
 ### Spec
 
-`/sy:spec <task>` reads the ticket and the code, resolves the repo's engineering standards, and presents a complete plan for your approval: the approach and the strongest rejected alternative, ordered changes with file anchors, tests and acceptance criteria, and a verification obligation — a claim plus the named evidence that will prove it — for every risk lens the work activates. You approve before anything is built; the plan lands on the ticket as the single ACTIVE plan, stamped with the commit it was planned against. Not every spec ends in a plan: when research shows the premise is already delivered, invalidated, or superseded, spec shelves the task with evidence instead of building on a premise that no longer holds.
+`/sy:spec <task>` reads the ticket and the code, resolves the repo's engineering standards, and presents a complete plan for your approval: the approach and the strongest rejected alternative (pressure-tested by the same proposer/adversary debate when the choice is a genuine, expensive-to-reverse fork), ordered changes with file anchors, tests and acceptance criteria, and a verification obligation — a claim plus the named evidence that will prove it — for every risk lens the work activates. You approve before anything is built; the plan lands on the ticket as the single ACTIVE plan, stamped with the commit it was planned against. Not every spec ends in a plan: when research shows the premise is already delivered, invalidated, or superseded, spec shelves the task with evidence instead of building on a premise that no longer holds.
 
 ![Verification obligations](docs/img/verification-obligations.png)
 
@@ -103,7 +103,7 @@ shipyard/
   .claude-plugin/plugin.json      # name: sy, version 1.0.0
   hooks/hooks.json                # review guard + usage accounting (plugin-level)
   scripts/                        # tracker-agnostic: validate.py, session_usage.py, review_guard.py, sy_memory.py, ci_poll.sh
-  agents/                         # sweep seam trace slice hunt gate img-inspector explain-author ship-{start,build,gate}
+  agents/                         # sweep seam trace slice hunt gate img-inspector explain-author debate debater ship-{start,build,gate}
   skills/
     plan/ spec/ ship/ spike/ pr/ ci/ standards/ explain/
     tracker/
@@ -111,11 +111,11 @@ shipyard/
       jira/    ADAPTER.md + md_to_adf.py jira_rest.py references/
       github/  ADAPTER.md + gh_project.py
   docs/
-    installation.md settings.md usage.md github-setup.md design-language.md smoke_github.sh img/
+    installation.md settings.md usage.md github-setup.md smoke_github.sh img/
 ```
 
 ## Contributing
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md). Run `python scripts/validate.py` before every PR; the seam and contract-completeness checks are not optional.
 
-![The night bridge](docs/img/background_2.png)
+![The four guarantees that hold end to end: adversarial review, context compression, verification obligations, and you merge](docs/img/background_2.png)

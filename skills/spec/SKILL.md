@@ -52,6 +52,7 @@ Read its body/comments directly and preserve settled decisions. Delegate only la
 - Use `sy:sweep` for breadth and `sy:trace` for one end-to-end path; verify decisive spans directly.
 - Pull representative data when shape/frequency matters.
 - Actively look for breaking cases and evidence against the preferred approach.
+- When that search leaves a genuine fork — two comparably strong approaches, expensive to reverse once the plan commits — pressure-test it with `sy:debate` rather than picking unilaterally: `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/debate.md`.
 
 Record standards compactly, for example:
 
@@ -104,7 +105,7 @@ Not every spec ends in a plan. When research shows the premise is already delive
 Present the full plan for sign-off:
 
 - approach and why;
-- strongest rejected alternative and why;
+- strongest rejected alternative and why — when a debate ran (§3), this is the adversary's strongest objection plus the user's steer, not a restatement invented after the fact;
 - ordered concrete changes with file anchors/key signatures;
 - existing primitives to reuse;
 - standards authority and task-specific constraints/risk lenses;
