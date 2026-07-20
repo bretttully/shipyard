@@ -67,15 +67,26 @@ If the user chose `project` scope above and wants every collaborator to get Ship
 
 Each collaborator still confirms the install themselves — Claude Code shows them the exact command rather than running it silently, since a plugin can execute arbitrary code.
 
+### Ad-hoc setup questions: delegate the lookup, don't answer from memory
+
+The user will ask setup questions mid-onboarding that this guide doesn't cover — "how do I generate ACLI_TOKEN," "where do I get a GitHub PAT," "what scopes does `gh` need." Don't answer from memory and don't fetch or read the answer inline. Dispatch a subagent (`WebFetch`/`WebSearch` via a plain `general-purpose` `Agent` dispatch, or `claude-code-guide` for a Claude-Code-specific question) to find the current instructions and return just the resolved answer. Two reasons, not one: credential and tool setup steps change upstream without notice, so a memorized answer can be stale in a way a fresh lookup isn't; and the raw page or search results belong in the subagent's throwaway context, not this session, the same discipline as the tracker/repo discovery below.
+
+### Ask before you explore, then discover via a subagent, not inline
+
+Ask the tracker and its identifiers up front (see step 2 below) — they're things the user already knows, and answering them costs nothing. Once you have them, the only thing left to discover is the tracker's *actual* lifecycle values (column/status names, GitHub's `Type`/`Status` field options), since the user may not recall a board's exact spelling. That discovery means querying the tracker (`gh project view`/`gh project field-list`, `acli jira project view`, and similar), which can return large listings, plus possibly checking the target repo for an existing `.claude/settings.json`. Delegate it to a subagent (`Explore`, or a plain `general-purpose` `Agent` dispatch) scoped to exactly the tracker and project/board the user named, and have it return just the resolved values — don't run tracker-discovery commands or multi-file reads directly in this onboarding session. This is Shipyard's own compression-boundary principle (see "Why it works this way" in the README): the onboarding session should practice it, not be the one place that violates it. Asking first, rather than exploring blind, is what makes the subsequent discovery a single targeted lookup instead of an open-ended probe.
+
 ## First-run walkthrough
 
-1. Ask the user's install scope — this repo only (project, shared via git; or local, just this checkout) or global (every project on this machine) — then load the plugin accordingly (Installing, above).
-2. Fill in `.claude/settings.json` for this repo — the five column names, the chosen tracker's required variables, and (for a `project`-scope team rollout) the `enabledPlugins`/`extraKnownMarketplaces` pair above.
-3. Put any secret (`ACLI_TOKEN`) in `.claude/settings.local.json`, not the shared file.
-4. Name a session and start the loop: `claude -n "plan <objective>" "/sy:plan <objective>"`.
-5. Answer `/sy:plan`'s interview questions; it writes the roadmap to one Epic.
-6. Per task: `/sy:spec <task>` (review and approve the plan it proposes), then `/sy:ship <task>` (builds, gets CI green, gets gated).
-7. When ship reports head/CI-green/reviewed convergence, authorize the merge explicitly — Shipyard never does this on its own.
+1. Give the user a short pitch — 2-3 sentences, not a wall of text. Don't paste "What Shipyard is"/"Concept model" at them verbatim; those sections are your background, not user-facing copy. For example: *"Shipyard turns an objective into a merged, independently-reviewed PR: plan a roadmap once, then per task it drafts a plan you approve, builds it, and gets an adversarial review before you merge — with the whole trail recorded on your tracker (Jira or GitHub Projects)."*
+2. Before doing anything else, ask the user (batched, one round): which tracker (Jira or GitHub Projects), install scope (this repo only, or global — see "Installing"), and the identifiers only they know — Jira site/project key/email, or GitHub Projects owner/number. Nothing below should start until these are answered.
+3. Load the plugin per the chosen scope (Installing, above).
+4. Now confirm the board's actual lifecycle values via a subagent scoped to exactly the tracker and project the user named (see "Ask before you explore," above) — this is a targeted lookup, not open-ended discovery.
+5. Fill in `.claude/settings.json` for this repo with the answered/discovered values, and (for a `project`-scope team rollout) the `enabledPlugins`/`extraKnownMarketplaces` pair above.
+6. Put any secret (`ACLI_TOKEN`) in `.claude/settings.local.json`, not the shared file.
+7. Name a session and start the loop: `claude -n "plan <objective>" "/sy:plan <objective>"`.
+8. Answer `/sy:plan`'s interview questions; it writes the roadmap to one Epic.
+9. Per task: `/sy:spec <task>` (review and approve the plan it proposes), then `/sy:ship <task>` (builds, gets CI green, gets gated).
+10. When ship reports head/CI-green/reviewed convergence, authorize the merge explicitly — Shipyard never does this on its own.
 
 ## Diagnosis recipes
 
@@ -94,3 +105,6 @@ Each collaborator still confirms the install themselves — Claude Code shows th
 - Exactly one execution plan is ACTIVE per task at a time — flag that a new `/sy:spec` run supersedes an existing unshipped plan rather than stacking silently.
 - This is a Claude Code plugin: install it with `claude plugin` / `--plugin-dir`, never by copying or symlinking files into `~/.claude`.
 - For a persistent install, ask whether it should be scoped to this repo or global before running `claude plugin install` — don't default to `--scope user` (global) silently; see "Installing" above.
+- Ask the user's tracker, identifiers, and install scope before exploring anything; delegate what's left (tracker/board queries, surveying the target repo's existing config) to a subagent that returns a compact brief, never raw API output or multi-file reads in this onboarding session (see "Ask before you explore" above). Shipyard's whole pitch is context discipline; model it while installing it, not just after.
+- Open with a short pitch, not the full "What Shipyard is"/"Concept model" text — those sections are your reference, not a script to recite.
+- An ad-hoc question like "how do I generate ACLI_TOKEN" gets delegated to a subagent for the lookup, never answered from memory or researched inline (see "Ad-hoc setup questions" above).
