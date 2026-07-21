@@ -32,6 +32,7 @@ Two convictions shape everything, and both exist to earn your trust in the outpu
 
 | What you have | What you type |
 |---|---|
+| a repo that hasn't been configured for Shipyard yet, or a teammate joining one that has | `/sy:init-repo` |
 | a large objective or an existing roadmap | `/sy:plan` |
 | one PR-sized task that needs an executable plan | `/sy:spec <task>` |
 | an approved plan ready to build | `/sy:ship <task>` |

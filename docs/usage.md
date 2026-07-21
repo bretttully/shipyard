@@ -1,6 +1,6 @@
 # Using Shipyard
 
-Once the plugin is [loaded](installation.md) and the repo is [configured](settings.md), day-to-day work is a short loop: plan a roadmap once (and revisit it when reality shifts), then per task, spec it, ship it, and merge it. Each command runs a long, mostly autonomous session, so the two habits that pay off most are **naming your sessions** and **letting each phase own its own session**.
+Once the plugin is [loaded](installation.md) and the repo is [configured](settings.md) — or run `/sy:init-repo` below to do that interactively — day-to-day work is a short loop: plan a roadmap once (and revisit it when reality shifts), then per task, spec it, ship it, and merge it. Each command runs a long, mostly autonomous session, so the two habits that pay off most are **naming your sessions** and **letting each phase own its own session**.
 
 ## Name your sessions
 
@@ -11,6 +11,14 @@ claude -n "spec PROJ-123 add billing" "/sy:spec PROJ-123"
 ```
 
 The trailing argument is the first prompt, so the session opens straight into the command. A named session is easy to locate later with `claude --resume`. `/sy:spec` also suggests an in-session `/rename` once the work has a clear slug, so you can name it after the shape of the task becomes clear.
+
+## 0. First time in this repo?
+
+```text
+/sy:init-repo
+```
+
+Every other command checks the tracker is genuinely usable — configured *and* live, not just present — as its first step, and stops with a named `## Action needed` block if it is not. `/sy:init-repo` is the fast path to fixing that: it reads whatever's already in `.claude/settings.json`, asks only for what is actually missing, and writes shared config and personal secrets to the right file. On a repo someone already configured, joining it is usually just supplying your own credential; on a brand-new repo, it is the full interview. See [`settings.md`](settings.md) for what every value means and where it's allowed to live.
 
 ## 1. Plan
 

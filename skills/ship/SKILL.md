@@ -13,6 +13,7 @@ $ARGUMENTS
 
 ## Invariants
 
+- Before classifying state or dispatching any worker, the parent runs the tracker preflight (`${CLAUDE_PLUGIN_ROOT}/skills/shared/references/preflight.md`); a failure stops here with its single `## Action needed` block — no worker starts against an unusable tracker.
 - Exactly one `# Execution Plan vN` is ACTIVE; otherwise stop for `/sy:spec`.
 - Check plan-base freshness before building: material drift between `PLAN_BASE_SHA` and the ship base returns to `/sy:spec`.
 - Resolve standards before code.
@@ -54,7 +55,7 @@ The parent advances on `done`; resolves `needs-decision` from plan/standards/cod
 
 ## State router
 
-Classify first, then load only the needed procedure:
+Preflight (above) runs once, first, ahead of this classification — including on resume, since a checkpoint can route straight to BUILD or GATE without ever passing through START. Classify first, then load only the needed procedure:
 
 ```text
 START     initialize/resume ownership       → ship-start worker · references/start-resume.md

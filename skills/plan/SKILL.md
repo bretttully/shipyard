@@ -12,6 +12,8 @@ Build or revise one **living Epic roadmap**. The Epic body owns conceptual depth
 
 Plan against fresh `origin/main` unless the user names another base. Work code read-only. Tracker writes use the `tracker` skill (`/sy:tracker`).
 
+Before anything else — before this turn spends any research — run the tracker preflight (`${CLAUDE_PLUGIN_ROOT}/skills/shared/references/preflight.md`). A failure stops here with its single `## Action needed` block, not partway through the roadmap.
+
 $ARGUMENTS
 
 ## Invariants

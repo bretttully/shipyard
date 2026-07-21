@@ -4,7 +4,23 @@ Implements the tracker contract (`../CONTRACT.md`) against Jira via the Atlassia
 
 ## Configuration (self-check before any work)
 
-Required env: `ACLI_EMAIL`, `ACLI_TOKEN`, `ACLI_SITE`, `ACLI_PROJECT`. Never put tokens in command arguments. `acli jira auth status` proves only local credential presence; validate with a real work-item read. If any required value is missing, fail fast with the missing name. Build JQL with `${ACLI_PROJECT:?}`, never a hard-coded project.
+Required env: `ACLI_EMAIL`, `ACLI_TOKEN`, `ACLI_SITE`, `ACLI_PROJECT`. Never put tokens in command arguments. If any required value is missing, fail fast with the missing name. Build JQL with `${ACLI_PROJECT:?}`, never a hard-coded project.
+
+**Two independent auth mechanisms, both required.** Raw `acli jira ...` calls (most verbs below) use `acli`'s own login session, established once with `acli jira auth login` and cached under `~/.config/acli/` — entirely outside these env vars. `jira_rest.py` (the REST fallback, and every attachment operation) authenticates separately with `ACLI_EMAIL`/`ACLI_TOKEN`. A repo's shared config can supply everything except the two things that are genuinely per-person: the one-time `acli jira auth login`, and this person's own `ACLI_TOKEN` (a personal Atlassian API token, in `.claude/settings.local.json`, never the shared `.claude/settings.json`). Verifying one does not verify the other.
+
+**Preflight (the adapter's declared hook for `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/preflight.md`).** `acli jira auth status` proves only local credential presence, not liveness — validate both mechanisms with a real read, gated by the shared cache so this does not repeat on every invocation:
+
+```bash
+python "${CLAUDE_PLUGIN_ROOT}/scripts/sy_preflight.py" check --tracker jira --vars ACLI_EMAIL,ACLI_TOKEN,ACLI_SITE,ACLI_PROJECT
+# exit 0 → cached fresh, skip both reads below.
+# exit 2 → run both real reads now:
+acli jira workitem search --jql "project = ${ACLI_PROJECT:?}" --count          # proves acli's own login session
+python "${CLAUDE_PLUGIN_ROOT}/skills/tracker/jira/jira_rest.py" preflight     # proves ACLI_EMAIL/TOKEN/SITE/PROJECT via REST
+# both succeed →
+python "${CLAUDE_PLUGIN_ROOT}/scripts/sy_preflight.py" record --tracker jira --vars ACLI_EMAIL,ACLI_TOKEN,ACLI_SITE,ACLI_PROJECT
+```
+
+A missing or expired `acli` login fails the first read with `acli`'s own auth error (`acli jira auth status` first, if unclear, to confirm which of the two is actually broken — it only proves credential presence, so a fresh error from the real read above is the one to act on); a missing or invalid `ACLI_TOKEN`/`ACLI_SITE`/`ACLI_PROJECT` fails `jira_rest.py preflight` with its own HTTP error naming the problem. Either failure is the exact text `preflight.md`'s `## Action needed` block relays — never a bare crash discovered later inside an attachment upload.
 
 ## Type mapping
 

@@ -36,7 +36,7 @@ claude plugin install sy@shipyard --scope project
 
 `claude plugin install` takes `<plugin>@<marketplace>`; here the plugin is `sy` and the marketplace is `shipyard` (the `name` in `marketplace.json`). Equivalently, run `/plugin`, go to **Discover**, and choose a scope in the interactive UI. Manage it later with `claude plugin list`, `claude plugin update sy`, and `claude plugin uninstall sy`.
 
-Only `--plugin-dir` (the one-session dev mode above) needs a local checkout. Either way, the commands are namespaced by the plugin name (`sy`): `/sy:plan`, `/sy:spec`, `/sy:ship`, `/sy:spike`, `/sy:pr`, `/sy:ci`, `/sy:explain`.
+Only `--plugin-dir` (the one-session dev mode above) needs a local checkout. Either way, the commands are namespaced by the plugin name (`sy`): `/sy:plan`, `/sy:spec`, `/sy:ship`, `/sy:spike`, `/sy:pr`, `/sy:ci`, `/sy:explain`, `/sy:init-repo`.
 
 ### Choose an install scope
 
@@ -88,6 +88,7 @@ For the GitHub tracker, `gh` also needs `project` + `read:project` scopes (`gh a
 
 ## Next steps
 
-- [`settings.md`](settings.md) — configure a repo (tracker choice, column names, model, tracker credentials).
+- Run `/sy:init-repo` for an interactive walkthrough of the configuration below — it asks only for what your `.claude/settings.json` doesn't already have, so a teammate joining an already-configured repo answers a short exchange, not a full interview.
+- [`settings.md`](settings.md) — configure a repo by hand (tracker choice, column names, model, tracker credentials) — what `/sy:init-repo` writes for you.
 - [`github-setup.md`](github-setup.md) — one-time GitHub Projects board and field setup (GitHub tracker only).
 - [`usage.md`](usage.md) — the day-to-day `plan → spec → ship` loop.
