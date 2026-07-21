@@ -55,6 +55,7 @@ REQUIRED = {
     "scripts/ci_poll.sh",
     "scripts/sy_memory.py",
     "scripts/sy_preflight.py",
+    "scripts/scrub_known_secrets.py",
     "skills/tracker/SKILL.md",
     "skills/tracker/CONTRACT.md",
     "skills/tracker/jira/ADAPTER.md",
@@ -405,6 +406,7 @@ def main() -> int:
     run_self_test("scripts/session_usage.py", errors)
     run_self_test("scripts/sy_memory.py", errors)
     run_self_test("scripts/sy_preflight.py", errors)
+    run_self_test("scripts/scrub_known_secrets.py", errors)
     run_self_test("skills/tracker/github/gh_project.py", errors)
     run_self_test("skills/tracker/jira/jira_rest.py", errors)
     run_self_test("scripts/ci_poll.sh", errors)
