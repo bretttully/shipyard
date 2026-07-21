@@ -19,7 +19,9 @@ EXPECTED_AGENTS = {
     "sweep", "seam", "trace", "slice", "hunt", "gate", "ship-start", "ship-build", "ship-gate",
     "img-inspector", "explain-author", "debate", "debater",
 }
-EXPECTED_SKILLS = {"plan", "spec", "ship", "spike", "pr", "ci", "standards", "tracker", "explain", "init-repo"}
+EXPECTED_SKILLS = {
+    "plan", "spec", "ship", "spike", "pr", "ci", "standards", "tracker", "explain", "init-repo", "help",
+}
 FORBIDDEN_OLD_NAMES = {"explore-sonnet", "seam-scout", "path-tracer", "slice-builder", "bug-hunter", "rev-gate"}
 
 CANONICAL_VERBS = {

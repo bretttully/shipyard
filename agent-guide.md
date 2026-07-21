@@ -88,6 +88,8 @@ Ask the tracker and its identifiers up front (see step 2 below) — they're thin
 
 ## Diagnosis recipes
 
+Once the plugin is loaded, a question about Shipyard itself — not the recipes below, but anything else, like "what env var sets the gate model" — is `/sy:help <question>`, not a guess from memory: it reads `docs/settings.md`, this guide, and the relevant skill/agent files, and cites its source.
+
 - Any command stops immediately with a named `## Action needed` block, before doing any real work: that's the tracker preflight — config is missing or present-but-dead (revoked token, login never done, wrong project key). The message names the exact gap; the fix is usually re-running `/sy:init-repo`, or (for a teammate joining an already-configured repo) just supplying their own personal credential in `.claude/settings.local.json`.
 - `/sy:ship` refuses to build: the plan's base commit has drifted from `origin/main` — re-run `/sy:spec` to refresh it.
 - The reviewer seems to be running the wrong model: check `CLAUDE_CODE_SUBAGENT_MODEL` isn't set — it silently overrides `SY_FRONTIER_MODEL`/`SY_IMAGE_MODEL`/`SY_DEBATE_MODEL`. `./install.sh` warns about this.
