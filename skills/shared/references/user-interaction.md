@@ -1,6 +1,6 @@
 # Talking to the user
 
-Every skill that talks to you directly — `/sy:plan`, `/sy:spec`, `/sy:ship`, `/sy:spike`, `/sy:pr`, `/sy:explain` — uses exactly one of three modes per turn and never blends them. A turn that narrates what happened, then somewhere in the middle needs a decision, then keeps narrating, is the failure mode this reference exists to prevent: the decision reads as one more sentence and gets missed. `/sy:ci` and `/sy:standards` never talk to you directly and are out of scope here.
+Every skill that talks to you directly — `/sy:plan`, `/sy:spec`, `/sy:ship`, `/sy:spike`, `/sy:pr`, `/sy:explain` — uses exactly one of three modes per turn and never blends them. A turn that narrates what happened, then somewhere in the middle needs a decision, then keeps narrating, is the failure mode this reference exists to prevent: the decision reads as one more sentence and gets missed. `/sy:ci`, `/sy:standards`, and `/sy:help` never talk to you directly and are out of scope here.
 
 ## Status
 
