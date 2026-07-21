@@ -4,6 +4,12 @@
 
 Shipyard is a Claude Code plugin that takes an objective from "we should build this" to a merged, independently reviewed pull request — with the whole trail recorded on your issue tracker, **Jira or GitHub Projects**. You plan a roadmap once, then repeat a short loop per task: spec it, ship it, merge it. Claude does the building and the reviewing; you approve the plan and authorize the merge.
 
+**Already running Claude Code?** Paste this and let it drive the setup:
+
+```text
+Help me install and configure Shipyard in this repo. Read https://raw.githubusercontent.com/bretttully/shipyard/main/agent-guide.md first, then walk me through it step by step.
+```
+
 ## What you get
 
 Point Shipyard at a task and it produces a PR that is ready to merge: the change is built to an approved plan, CI is green, and an independent reviewer has signed off on the exact commits you are about to merge. Alongside the PR, the ticket carries the full paper trail — the plan it was built against, a retrospective, token and outcome logs, and the session transcript — so the "why" survives long after the diff is gone. Only you merge, and nothing merges without your explicit word.
@@ -67,12 +73,6 @@ The issue tracker is the one pluggable part. Core skills and agents speak a sing
 Some lessons outlive a single ticket — a CLI flag with inverted semantics, a model that silently falls back to a default. Those go into a small, user-global memory store (`scripts/sy_memory.py`, one file per lesson plus a greppable index) rather than a ticket comment or a repo's `CLAUDE.md`. `/sy:plan` and `/sy:spec` read it during early research and `/sy:ship` at start; new lessons get written, at most a few at a time, during ship's retrospective. It is cross-repo by design, so a trap learned once does not have to be relearned in the next repo next month.
 
 ## Install and configure
-
-**Already running Claude Code?** Paste this and let it drive the setup:
-
-```text
-Help me install and configure Shipyard in this repo. Read https://raw.githubusercontent.com/bretttully/shipyard/main/agent-guide.md first, then walk me through it step by step.
-```
 
 Shipyard is a plugin, so it is loaded, not symlinked:
 
