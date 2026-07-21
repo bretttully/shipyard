@@ -34,7 +34,16 @@ claude plugin marketplace add /path/to/shipyard
 claude plugin install sy@shipyard --scope project
 ```
 
-`claude plugin install` takes `<plugin>@<marketplace>`; here the plugin is `sy` and the marketplace is `shipyard` (the `name` in `marketplace.json`). Equivalently, run `/plugin`, go to **Discover**, and choose a scope in the interactive UI. Manage it later with `claude plugin list`, `claude plugin update sy`, and `claude plugin uninstall sy`.
+`claude plugin install` takes `<plugin>@<marketplace>`; here the plugin is `sy` and the marketplace is `shipyard` (the `name` in `marketplace.json`). Equivalently, run `/plugin`, go to **Discover**, and choose a scope in the interactive UI.
+
+Manage it later with `claude plugin list`. `update` and `uninstall` both default to `--scope user`, which is almost never right here since the install above used `--scope project` — pass the same scope back, and the full `plugin@marketplace` id, or they resolve against the wrong install (or nothing) and fail with `Plugin "sy" not found`:
+
+```bash
+claude plugin update sy@shipyard --scope project
+claude plugin uninstall sy@shipyard --scope project
+```
+
+`update` only acts when `.claude-plugin/plugin.json`'s `version` has actually moved — it fetches the marketplace's git remote regardless, but a same-version fetch is a no-op even if new commits landed. If `update` reports "already at the latest version" right after a change you know shipped, the maintainer forgot to bump the version (see [`CONTRIBUTING.md`](../CONTRIBUTING.md)); there's nothing to do on the consumer side but wait for the bump.
 
 Only `--plugin-dir` (the one-session dev mode above) needs a local checkout. Either way, the commands are namespaced by the plugin name (`sy`): `/sy:plan`, `/sy:spec`, `/sy:ship`, `/sy:spike`, `/sy:pr`, `/sy:ci`, `/sy:explain`, `/sy:init-repo`.
 
