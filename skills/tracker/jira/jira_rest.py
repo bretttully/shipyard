@@ -14,6 +14,7 @@ from pathlib import Path
 import secrets
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 
@@ -111,6 +112,21 @@ def create_link(blocker: str, blocked: str, link_type: str) -> None:
     print(f'{blocker} {link_type.lower()} {blocked} (verified: {blocker} is the blocker)')
 
 
+def preflight() -> None:
+    """Real, minimal read: proves EMAIL/TOKEN/SITE together authenticate AND that PROJECT
+    actually exists and is visible to this account. A credential can be present and still be
+    dead, and an unknown project key does not error a JQL search — it just returns zero
+    results — so this reads the project itself, which 404s loudly on a bad key."""
+    project = os.environ.get('ACLI_PROJECT')
+    if not project:
+        raise SystemExit('jira_rest: ACLI_PROJECT must be set')
+    base, auth = config()
+    _, item = request('GET', f'{base}/rest/api/3/project/{urllib.parse.quote(project)}', auth)
+    if not isinstance(item, dict) or item.get('key') != project:
+        raise SystemExit(f'jira_rest: preflight read did not confirm project {project!r}')
+    print(json.dumps({'ok': True, 'project': project, 'name': item.get('name')}, indent=2))
+
+
 def get(issue: str, fields: str | None) -> None:
     """Print the issue JSON (optionally limited to a fields csv), indent=2."""
     base, auth = config()
@@ -205,6 +221,7 @@ def self_test() -> None:
         (['add-label', 'AM-1', 'x'], 'add-label'),
         (['set-parent', 'AM-1', 'AM-2'], 'set-parent'),
         (['link', '--blocker', 'AM-1', '--blocked', 'AM-2'], 'link'),
+        (['preflight'], 'preflight'),
         (['get', 'AM-1', '--fields', 'summary,labels'], 'get'),
         (['transitions', 'AM-1'], 'transitions'),
         (['comment-get', 'AM-1', '10001'], 'comment-get'),
@@ -309,6 +326,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser('set-parent')
     p.add_argument('issue')
     p.add_argument('parent')
+    sub.add_parser('preflight', help='real minimal project read: proves REST credentials are live, not just present')
     k = sub.add_parser('link', help='create a verified dependency link (blocker blocks blocked)')
     k.add_argument('--blocker', required=True, help='the issue that blocks')
     k.add_argument('--blocked', required=True, help='the issue that is blocked')
@@ -348,6 +366,8 @@ def main() -> None:
         add_label(args.issue, args.label)
     elif args.cmd == 'set-parent':
         set_parent(args.issue, args.parent)
+    elif args.cmd == 'preflight':
+        preflight()
     elif args.cmd == 'link':
         create_link(args.blocker, args.blocked, args.type)
     elif args.cmd == 'get':

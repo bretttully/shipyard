@@ -15,7 +15,19 @@ Implements the tracker contract (`../CONTRACT.md`) against GitHub Issues + Proje
 5. **The project has the two required single-select fields** (create once; see `docs/github-setup.md`):
    - **`Status`** with an option for each of the five columns above (names matched case-insensitively).
    - **`Type`** with options `Epic`, `Task`, `Bug`.
-   Run `gh_project.py check --project "$SY_GH_PROJECT"` to confirm every canonical value resolves; it prints the board's actual options and fails loudly on a gap.
+
+**Preflight (the adapter's declared hook for `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/preflight.md`).** `gh_project.py check` is the real, live read that proves steps 2 and 5 together — the board resolves and every canonical value has a matching option — not just that config is present; it prints the board's actual options and fails loudly on a gap. Gate it behind the shared cache so it does not repeat on every invocation:
+
+```bash
+python "${CLAUDE_PLUGIN_ROOT}/scripts/sy_preflight.py" check --tracker github --vars SY_GH_PROJECT,SY_GH_REPO
+# exit 0 → cached fresh, skip the read below.
+# exit 2 → run it now:
+python "${CLAUDE_PLUGIN_ROOT}/skills/tracker/github/gh_project.py" check --project "$SY_GH_PROJECT"
+# succeeds →
+python "${CLAUDE_PLUGIN_ROOT}/scripts/sy_preflight.py" record --tracker github --vars SY_GH_PROJECT,SY_GH_REPO
+```
+
+Unlike Jira's split credential, `gh auth` is the single mechanism both this board read and `/sy:pr`'s code-host operations share, so a working `gh auth status` (step 2) is rarely a fresh gap by the time someone reaches this adapter — the board-field check above is the part actually specific to Shipyard's config and worth caching.
 
 Do all board field/node-id work only through `${CLAUDE_PLUGIN_ROOT}/skills/tracker/github/gh_project.py`; never touch raw project/field/option IDs.
 

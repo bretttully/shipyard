@@ -13,6 +13,8 @@ Turn this goal or work item into a **Task** (or **Bug** for a defect fix) contai
 
 Plan against fresh `origin/main` unless the user names another immutable base.
 
+Before anything else — before the surface scan below spends any research — run the tracker preflight (`${CLAUDE_PLUGIN_ROOT}/skills/shared/references/preflight.md`). A failure stops here with its single `## Action needed` block, not partway through the plan.
+
 $ARGUMENTS
 
 ## Scope before routing

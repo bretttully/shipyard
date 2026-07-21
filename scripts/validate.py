@@ -19,7 +19,7 @@ EXPECTED_AGENTS = {
     "sweep", "seam", "trace", "slice", "hunt", "gate", "ship-start", "ship-build", "ship-gate",
     "img-inspector", "explain-author", "debate", "debater",
 }
-EXPECTED_SKILLS = {"plan", "spec", "ship", "spike", "pr", "ci", "standards", "tracker", "explain"}
+EXPECTED_SKILLS = {"plan", "spec", "ship", "spike", "pr", "ci", "standards", "tracker", "explain", "init-repo"}
 FORBIDDEN_OLD_NAMES = {"explore-sonnet", "seam-scout", "path-tracer", "slice-builder", "bug-hunter", "rev-gate"}
 
 CANONICAL_VERBS = {
@@ -52,6 +52,7 @@ REQUIRED = {
     "scripts/review_guard.py",
     "scripts/ci_poll.sh",
     "scripts/sy_memory.py",
+    "scripts/sy_preflight.py",
     "skills/tracker/SKILL.md",
     "skills/tracker/CONTRACT.md",
     "skills/tracker/jira/ADAPTER.md",
@@ -75,6 +76,7 @@ REQUIRED = {
     "skills/shared/references/user-interaction.md",
     "skills/shared/references/write-integrity.md",
     "skills/shared/references/scope-discipline.md",
+    "skills/shared/references/preflight.md",
     "skills/plan/references/new-objective.md",
     "skills/plan/references/reentry.md",
     "skills/plan/references/roadmap-shaping.md",
@@ -156,7 +158,7 @@ def check_no_home_paths(errors: list[str]) -> None:
 def check_seam(errors: list[str]) -> None:
     scan = _component_md(seam_only=True) + [
         ROOT / "scripts/session_usage.py", ROOT / "scripts/review_guard.py", ROOT / "scripts/ci_poll.sh",
-        ROOT / "scripts/sy_memory.py",
+        ROOT / "scripts/sy_memory.py", ROOT / "scripts/sy_preflight.py",
     ]
     for p in scan:
         text = p.read_text(encoding="utf-8")
@@ -220,6 +222,11 @@ def check_invariants(errors: list[str]) -> None:
     user_interaction = read("skills/shared/references/user-interaction.md")
     write_integrity = read("skills/shared/references/write-integrity.md")
     scope = read("skills/shared/references/scope-discipline.md")
+    preflight_ref = read("skills/shared/references/preflight.md")
+    tracker_skill = read("skills/tracker/SKILL.md")
+    jira_adapter = read("skills/tracker/jira/ADAPTER.md")
+    github_adapter = read("skills/tracker/github/ADAPTER.md")
+    init_repo = read("skills/init-repo/SKILL.md")
 
     if "--match-head-commit" not in merge:
         fail("merge path missing atomic head guard (--match-head-commit)", errors)
@@ -266,10 +273,27 @@ def check_invariants(errors: list[str]) -> None:
         fail("plan approval must name the mutations the go-ahead covers", errors)
     for name, text in (
         ("ship", ship + start + handoff), ("spec", spec), ("plan", plan), ("spike", spike),
-        ("pr", pr), ("explain", explain),
+        ("pr", pr), ("explain", explain), ("init-repo", init_repo),
     ):
         if "AskUserQuestion" not in text:
             fail(f"{name} skill must route user decisions through AskUserQuestion per user-interaction.md", errors)
+
+    if "## Action needed" not in preflight_ref or "docs/settings.md" not in preflight_ref:
+        fail("preflight reference must define the Action-needed failure shape and link docs/settings.md", errors)
+    if "sy_preflight.py" not in preflight_ref or "cache" not in preflight_ref.lower():
+        fail("preflight reference must describe the cached liveness check (sy_preflight.py)", errors)
+    if "sy_preflight.py" not in tracker_skill:
+        fail("tracker skill must wire the cached liveness check (sy_preflight.py) into its fail-fast section", errors)
+    for name, text in (("jira", jira_adapter), ("github", github_adapter)):
+        if "sy_preflight.py" not in text:
+            fail(f"{name} adapter must declare its preflight hook, cached through sy_preflight.py", errors)
+    for name, text in (("plan", plan), ("spec", spec), ("ship", ship), ("spike", spike)):
+        if "preflight.md" not in text:
+            fail(f"{name} must run the tracker preflight (preflight.md) before other work", errors)
+    if "settings.local.json" not in init_repo or "settings.json" not in init_repo:
+        fail("init-repo must split shared vs secret config between settings.json and settings.local.json", errors)
+    if "preflight.md" not in init_repo or "sy_preflight.py" not in init_repo:
+        fail("init-repo must prove config live via the same preflight mechanism other commands use", errors)
 
     if "scope extension" not in scope or "justify itself" not in scope:
         fail("scope-discipline reference must define recorded scope extensions and the follow-up-justifies-itself default", errors)
@@ -378,6 +402,7 @@ def main() -> int:
     run_self_test("scripts/review_guard.py", errors)
     run_self_test("scripts/session_usage.py", errors)
     run_self_test("scripts/sy_memory.py", errors)
+    run_self_test("scripts/sy_preflight.py", errors)
     run_self_test("skills/tracker/github/gh_project.py", errors)
     run_self_test("skills/tracker/jira/jira_rest.py", errors)
     run_self_test("scripts/ci_poll.sh", errors)

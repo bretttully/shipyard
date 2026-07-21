@@ -33,6 +33,22 @@ This is the **single point** where tracker selection happens. No other skill or 
 
 Report the actionable error and stop; never fall through to a default that silently writes to the wrong system.
 
+### Liveness: cached, not just presence
+
+The three presence checks above do not prove the config is *live* — a credential can be set and still be dead. Once presence passes, run the adapter's declared preflight hook (its own `ADAPTER.md` documents what "a real read" means for that tracker), gated by the shared cache so the network read does not repeat on every invocation:
+
+```bash
+python "${CLAUDE_PLUGIN_ROOT}/scripts/sy_preflight.py" check --tracker "$SY_TRACKER" --vars <adapter's required-var list, comma-separated>
+```
+
+Exit `0` means a prior live check for this exact tracker/config is still fresh — proceed with no network call. Exit `2` means run the adapter's live-check command now; on success, record it so the next invocation gets the cached exit:
+
+```bash
+python "${CLAUDE_PLUGIN_ROOT}/scripts/sy_preflight.py" record --tracker "$SY_TRACKER" --vars <same list>
+```
+
+A failure at any step — presence or liveness — stops here with the single named `## Action needed` block `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/preflight.md` defines; never a fall-through and never a crash discovered later inside a write.
+
 ## What core may ask for
 
 Core speaks only the contract: canonical verbs (`create-issue`, `create-child`, `get-issue`, `update-issue`, `find-issues`, `set-status`, `assign`, `link-parent`, `add-dependency`, `add-label`, `post-comment`, `post-log`, `attach-artifact`, `link-pr`), canonical statuses (`backlog`, `ready`, `in-progress`, `in-review`, `done`), and canonical types (`epic`, `task`, `bug`). Issue IDs are opaque; bodies and comments are Markdown. The adapter maps all of it.
