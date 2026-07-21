@@ -36,3 +36,4 @@ The validator enforces this seam — a stray tracker-native name in a core file 
 - Run `python scripts/validate.py` and make sure it passes.
 - For the GitHub adapter, `docs/smoke_github.sh` exercises every verb against a scratch repo/board (it creates real issues — read its header first).
 - Keep PR descriptions short: the diff shows *what* changed; the description explains *why*.
+- If the change is consumer-visible (anything under `skills/`, `agents/`, `hooks/`, `scripts/`, or `docs/`), bump `version` in `.claude-plugin/plugin.json`. `claude plugin update` gates entirely on that string, not on the git SHA — it will happily keep the marketplace clone fetched to the latest commit while reporting "already at the latest version" forever if the version never moves, and installed copies stay pinned to stale content at their old version-keyed cache path. After merging, tag the release with `claude plugin tag --push` so the tag and `plugin.json` agree.
