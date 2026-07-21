@@ -17,17 +17,32 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/session_usage.py export \
 
 ## Secret scan before upload
 
-1. Run deterministic scanning first:
+1. Run deterministic scanning first — two passes, in this order, both required:
 
-```bash
-gitleaks dir .scratch/PROJ-123-ship-session.txt --redact --report-format json --report-path .scratch/gitleaks-report.json
-```
+   a. Known-secret scrub. Pattern/entropy scanners only catch a secret that matches a known rule shape; a value that reached the transcript verbatim (a diagnostic `env | grep` dump, a scanner's own `-v` output echoed back into a later tool-call result) leaks regardless of shape, and reappears identically on every future re-render. Strip those first, by value rather than by pattern:
+
+      ```bash
+      python ${CLAUDE_PLUGIN_ROOT}/scripts/scrub_known_secrets.py scrub \
+        .scratch/PROJ-123-ship-session.txt --require ACLI_TOKEN --report .scratch/scrub-report.json
+      ```
+
+      This rewrites the file in place, replacing every literal occurrence of a credential-shaped env var's current value with `<REDACTED:VAR_NAME>`. It never prints or reports a value, only variable names and counts. `--require ACLI_TOKEN` turns "this process's environment doesn't actually have the token" into a loud failure instead of a silent zero-redaction success — auto-discovery alone only scrubs what's present, so a missing/rotated/unpropagated token would otherwise pass with nothing to show for it.
+
+   b. gitleaks, on the now-prescrubbed file:
+
+      ```bash
+      gitleaks dir .scratch/PROJ-123-ship-session.txt --redact --report-format json --report-path .scratch/gitleaks-report.json
+      ```
+
+      Never pass `-v`/`--verbose` here — it prints matched secret values into gitleaks' own stdout, which is itself a Bash tool-call result and gets logged into the session JSONL exactly like any other secret leak, only now self-inflicted.
 
 2. Inspect the report and the transcript for organisation-specific secrets, bearer tokens, API keys, `.env` values, credentials, private signed URLs, and contextual secrets scanners may miss.
 3. Redact and rescan.
 4. If safe redaction is uncertain, stop rather than publishing.
 
-A zero-result scanner run is evidence, not proof of safety.
+A zero-result scanner run is evidence, not proof of safety. Neither pass above is a substitute for the other: the scrub catches known values verbatim regardless of shape; gitleaks catches shapes it recognizes regardless of whether this process ever held the value.
+
+When diagnosing tracker credentials, never dump them to inspect: `env | grep -i token`, `echo $ACLI_TOKEN`, and similar print the raw value into that command's own tool-call result, which is permanent session history from that point on — it resurfaces in every future transcript render whether or not it started life as a leak. Use a presence-only check instead, e.g. `[ -n "$ACLI_TOKEN" ]`, or the tracker's own `preflight` command, which names what's missing without ever printing a value.
 
 ## Upload
 

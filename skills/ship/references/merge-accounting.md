@@ -12,7 +12,7 @@ Load only after the user directly authorizes merge. The authorization is the inf
 6. if the same ship session is active and substantial post-handoff agent work occurred, regenerate full-tree usage JSON and post a new standalone `# Claude Code usage` comment rather than editing it into another comment;
 7. refresh/rescan the transcript attachment when appropriate (full tier). If merge runs in another session, preserve the original ship transcript and record merge execution separately.
 
-Follow the `tracker` skill's attachment flow for the deterministic `gitleaks` scan, contextual review, redaction, upload, and verification.
+Follow the `tracker` skill's attachment flow for the deterministic scan (known-secret scrub, then `gitleaks`), contextual review, redaction, upload, and verification.
 
 ## Bounded fix before merge
 
