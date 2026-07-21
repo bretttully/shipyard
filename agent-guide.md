@@ -60,7 +60,7 @@ If the user chose `project` scope above and wants every collaborator to get Ship
   "extraKnownMarketplaces": {
     "shipyard": { "source": { "source": "github", "repo": "bretttully/shipyard" } }
   },
-  "enabledPlugins": ["sy@shipyard"],
+  "enabledPlugins": { "sy@shipyard": true },
   "env": { "SY_TRACKER": "...", "...": "..." }
 }
 ```

@@ -50,14 +50,14 @@ Only `--plugin-dir` (the one-session dev mode above) needs a local checkout. Eit
 
 `project` is the natural fit for Shipyard: it is already configured per repository (see [`settings.md`](settings.md)), so putting the plugin declaration and the `SY_*` env block in the same tracked `.claude/settings.json` keeps one file as the source of truth for "this repo runs Shipyard, configured like this."
 
-**`--scope project` alone does not make a fresh clone work.** It writes `enabledPlugins: ["sy@shipyard"]` — an intent — but a collaborator whose machine has never run `marketplace add` has no `shipyard` marketplace to resolve that name against. Close that gap by also adding `extraKnownMarketplaces` to the same `.claude/settings.json`, pointing at this repo, so the marketplace itself travels with the clone:
+**`--scope project` alone does not make a fresh clone work.** It writes `enabledPlugins: { "sy@shipyard": true }` — an intent — but a collaborator whose machine has never run `marketplace add` has no `shipyard` marketplace to resolve that name against. Close that gap by also adding `extraKnownMarketplaces` to the same `.claude/settings.json`, pointing at this repo, so the marketplace itself travels with the clone:
 
 ```json
 {
   "extraKnownMarketplaces": {
     "shipyard": { "source": { "source": "github", "repo": "bretttully/shipyard" } }
   },
-  "enabledPlugins": ["sy@shipyard"]
+  "enabledPlugins": { "sy@shipyard": true }
 }
 ```
 
