@@ -86,7 +86,7 @@ Shipyard is opinionated about the **number and role** of the lifecycle columns �
 
 Every command that reads or writes the tracker (`/sy:plan`, `/sy:spec`, `/sy:ship`, `/sy:spike`) checks this configuration before doing anything else — not just that the required values are set, but that they actually work, with one cheap real read against the tracker. A value can be present and still dead: a revoked token, a login that was never done, a mistyped project key. That live check is cached (fingerprinted to the plugin build, the tracker, and the resolved config, with a short TTL) so it costs a network round trip only occasionally, not on every command. A failure names exactly what's missing or broken and links back to this page — never a crash discovered later inside a write. Run `/sy:init-repo` for an interactive walkthrough that gets a repo (or just your own personal credential, if a teammate already configured the shared values) to the point where this check passes.
 
-## Secrets
+## Secrets and machine-specific values
 
 `ACLI_TOKEN` is a credential and must not be committed. Put it in the repo's `.claude/settings.local.json` (which Claude Code treats as personal and is gitignored) or export it in your shell environment; keep only non-secret config in the shared `.claude/settings.json`. `settings.local.json` uses the same `env` shape:
 
@@ -95,6 +95,8 @@ Every command that reads or writes the tracker (`/sy:plan`, `/sy:spec`, `/sy:shi
 ```
 
 Shipyard never passes tokens as command-line arguments.
+
+`SY_WORKTREE_ROOT` isn't a secret, but an absolute path is machine-specific the same way a credential is personal — it belongs in `settings.local.json` too (per-repo, if teammates' home directories differ) rather than the shared `settings.json`, e.g. `{ "env": { "SY_WORKTREE_ROOT": "/home/you/worktrees" } }`. `/sy:init-repo` asks about this and writes it to the right file.
 
 ## Model routing
 
