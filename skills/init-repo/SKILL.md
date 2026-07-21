@@ -63,14 +63,27 @@ subagent scoped to exactly that tracker and project/board — never run open-end
 in this session — and present the discovered names for the user to confirm rather than asking them
 to type a spelling from memory.
 
-## 5. Write, split by secrecy
+Separately, and only if `SY_WORKTREE_ROOT` is not already set, ask once whether they want ship
+worktrees in the default sibling `<repo>-worktrees/` directory beside the repo or a different
+directory (e.g. a shared `~/worktrees`). This is optional, not part of the required-vars interview
+above — skip silently on "default is fine" or no answer. If they name a directory, resolve it to
+an absolute path (expand `~`, resolve anything relative against the repo root) before writing it:
+a literal `~` in the env value will not expand later when a worker's shell command interpolates
+`$SY_WORKTREE_ROOT`. If the directory is one they intend to share across multiple repos, mention
+once, briefly, that worktrees for identically named branches in different repos would then collide
+under that one root — the default per-repo sibling directory avoids this.
 
-- Shared, non-secret values (`SY_TRACKER`, the five column names, and every adapter var the
-  loaded `ADAPTER.md` does not call out as a credential) merge into `.claude/settings.json`'s
+## 5. Write, split by secrecy and portability
+
+- Shared, portable, non-secret values (`SY_TRACKER`, the five column names, and every adapter var
+  the loaded `ADAPTER.md` does not call out as a credential) merge into `.claude/settings.json`'s
   `env` block. Create the file if absent; preserve every existing key (including
   `enabledPlugins`/`extraKnownMarketplaces` if already there) and merge rather than overwrite.
-- Secret values (a personal API token) merge into `.claude/settings.local.json`'s `env` block —
-  **never** the shared file — matching the Secrets convention in `docs/settings.md`.
+- Secret values (a personal API token) **and** machine-specific values (a resolved
+  `SY_WORKTREE_ROOT`, if the user gave one) merge into `.claude/settings.local.json`'s `env` block
+  — **never** the shared file. `SY_WORKTREE_ROOT` isn't a secret, but it's an absolute path on this
+  machine; committing it to the shared file breaks preflight for every teammate whose home
+  directory differs. Matches the Secrets convention in `docs/settings.md`.
 - If `.claude/settings.json` has no `enabledPlugins` entry for this plugin yet, this is the very
   first setup for the repo, not a teammate joining one already configured: mention, as a single
   optional aside, the project-scope install path in `docs/installation.md` so the rest of the
