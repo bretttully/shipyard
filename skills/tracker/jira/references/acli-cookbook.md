@@ -11,7 +11,7 @@ acli jira workitem create --project "${ACLI_PROJECT:?}" --type Epic \
 acli jira workitem create --project "${ACLI_PROJECT:?}" --type Task \
   --parent PROJ-100 --summary "<title>" --description-file .scratch/PROJ-100-task.adf.json
 
-# Comments
+# Comments — see "ADF comments: create has no --body-adf" below before using --body-file here
 acli jira workitem comment create --key PROJ-123 --body-file .scratch/PROJ-123-comment.adf.json
 acli jira workitem comment list --key PROJ-123
 
@@ -25,6 +25,21 @@ python ${CLAUDE_PLUGIN_ROOT}/skills/tracker/jira/jira_rest.py link --blocker PRO
 Deleting a link is unambiguous and stays on `acli`: `acli jira workitem link delete --id <id> --yes`.
 
 `--yes` is not universal; use it only where the installed command supports it.
+
+## ADF comments: `comment create` has no `--body-adf`
+
+`acli jira workitem comment create --body-file <adf.json>` silently drops ADF block nodes its internal document model doesn't recognize — confirmed for `bulletList`, `orderedList`, and `codeBlock` — while reporting success and preserving everything else (headings, paragraphs, `code`/`strong` marks). `create` has no `--body-adf` flag; only `comment update` does, and only `update`'s `--body-adf` path parses ADF correctly (tracked upstream at `atlassian/homebrew-acli#45`, open since 2026-02-09, still present as of `1.3.22-stable`).
+
+For any comment body containing list or code-block structure, post a placeholder then overwrite it. `comment create --json` doesn't return the new id, so read it back from `comment list`:
+
+```bash
+acli jira workitem comment create --key PROJ-123 --body "pending"
+COMMENT_ID=$(acli jira workitem comment list --key PROJ-123 --json \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)['comments'][-1]['id'])")
+acli jira workitem comment update --key PROJ-123 --id "$COMMENT_ID" --body-adf .scratch/PROJ-123-comment.adf.json
+```
+
+Verify the write with `jira_rest.py comment-get` (below) — the same raw-REST reason as the other reads in this file.
 
 ## Labels
 
