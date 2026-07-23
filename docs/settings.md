@@ -15,6 +15,7 @@ This page is the complete reference for every knob. For the one-time GitHub Proj
 | `SY_DEBATE_MODEL` | both | no | `opus` | The model `sy:debate` and its `sy:debater` dispatches use to pressure-test a genuinely contested `/sy:plan`/`/sy:spec` fork. A quality floor, not a cost dial — raise it (e.g. to your `SY_FRONTIER_MODEL`) for a fork whose blast radius justifies the extra cost. |
 | `SY_WORKTREE_ROOT` | both | no | `<repo>-worktrees` beside the repo | The directory `/sy:ship` creates its isolated build/slice/review worktrees in (`$SY_WORKTREE_ROOT/<branch>`). Default is the sibling directory beside the repo (`/path/to/myrepo` → `/path/to/myrepo-worktrees/`); it is never inside the working tree. |
 | `SY_MEMORY_DIR` | both | no | `~/.claude/shipyard/memory` | Where the durable cross-session memory (`scripts/sy_memory.py`) keeps its one-file-per-lesson store and greppable index. User-global and cross-repo by design — set it only to relocate the store. |
+| `SY_DEBUG_EVALS` | both | no | unset (off) | When truthy (`1`/`true`/`yes`), appends a compact JSONL trigger/trace event — which skill or subagent fired, and the tool-call sequence around it — to `.scratch/sy/eval-events/<session_id>.jsonl` on every tool call. For building eval harnesses against real runs; leave unset for normal use. |
 | `SY_BACKLOG_COLNAME` | both | **yes** | — | Your board/workflow name for the `backlog` column (queued, not yet specced). |
 | `SY_READY_COLNAME` | both | **yes** | — | Your name for the `ready` column (specced, plan approved). |
 | `SY_IN_PROGRESS_COLNAME` | both | **yes** | — | Your name for the `in-progress` column (active build). |
@@ -101,3 +102,13 @@ Shipyard never passes tokens as command-line arguments. Never check whether one 
 ## Model routing
 
 Leave `CLAUDE_CODE_SUBAGENT_MODEL` **unset**. It overrides model routing for every subagent and takes precedence over `SY_FRONTIER_MODEL`, `SY_IMAGE_MODEL`, and `SY_DEBATE_MODEL`, so setting it would silently reroute the independent reviewer, the image inspector, and the debate off their intended models. `./install.sh` warns if it is set.
+
+## Trigger/trace event log (`SY_DEBUG_EVALS`)
+
+`scripts/eval_events.py` is wired into `PreToolUse`, `SubagentStop`, and `Stop`, same as `review_guard.py` and `session_usage.py`, but it does nothing unless `SY_DEBUG_EVALS` is truthy — set it only when you're building or running an eval harness against Shipyard itself. Enabled, it appends one JSON line per hook firing to `.scratch/sy/eval-events/<session_id>.jsonl`:
+
+```json
+{"schema":"shipyard.eval_events.v1","ts":"2026-07-23T10:00:00+00:00","session_id":"...","hook_event":"PreToolUse","agent_type":"gate","tool":"Skill","detail":{"skill":"ship"}}
+```
+
+`agent_type` is `"main"` for the top-level session and the namespace-stripped agent name (`sy:gate` → `gate`) inside a subagent transcript. `tool`/`detail` are only present on `PreToolUse` rows; `detail` is only populated for `Skill` calls (`{"skill": ...}`) and `Agent`/`Task` calls (`{"subagent_type": ..., "description": ...}`) — the two tool calls that answer "what triggered." Every other tool call still gets a bare `{"tool": ...}` row, enough to reconstruct call order for a trace-based eval without logging full tool arguments. `SubagentStop`/`Stop` rows carry no `tool` field; they mark segment boundaries.
