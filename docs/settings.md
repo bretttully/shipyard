@@ -95,7 +95,7 @@ Every command that reads or writes the tracker (`/sy:plan`, `/sy:spec`, `/sy:shi
 { "env": { "ACLI_TOKEN": "your-atlassian-api-token" } }
 ```
 
-Shipyard never passes tokens as command-line arguments. Never check whether one is set by dumping it (`env | grep -i token`, `echo $ACLI_TOKEN`) — that prints the value into that command's tool-call result, which is then permanent session history and resurfaces verbatim in every future transcript render; use a presence-only check instead (`[ -n "$ACLI_TOKEN" ]`, or the tracker's own `preflight` command).
+Shipyard never passes tokens as command-line arguments. Never check whether one is set by dumping it (`env | grep -i token`, `echo $ACLI_TOKEN`) — that prints the value into that command's tool-call result, which is then permanent session history and resurfaces verbatim in every future transcript render; use a presence-only check instead (`[ -n "$ACLI_TOKEN" ]`, or the tracker's own `preflight` command). This isn't advisory only: `scripts/secret_guard.py` is wired as a `PreToolUse` hook on every `Bash` call and denies the dump/echo patterns outright, name-based rather than value-based, so it fires whether or not a secret is actually set.
 
 `SY_WORKTREE_ROOT` isn't a secret, but an absolute path is machine-specific the same way a credential is personal — it belongs in `settings.local.json` too (per-repo, if teammates' home directories differ) rather than the shared `settings.json`, e.g. `{ "env": { "SY_WORKTREE_ROOT": "/home/you/worktrees" } }`. `/sy:init-repo` asks about this and writes it to the right file.
 
