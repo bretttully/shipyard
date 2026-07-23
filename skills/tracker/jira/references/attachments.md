@@ -42,7 +42,7 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/session_usage.py export \
 
 A zero-result scanner run is evidence, not proof of safety. Neither pass above is a substitute for the other: the scrub catches known values verbatim regardless of shape; gitleaks catches shapes it recognizes regardless of whether this process ever held the value.
 
-When diagnosing tracker credentials, never dump them to inspect: `env | grep -i token`, `echo $ACLI_TOKEN`, and similar print the raw value into that command's own tool-call result, which is permanent session history from that point on — it resurfaces in every future transcript render whether or not it started life as a leak. Use a presence-only check instead, e.g. `[ -n "$ACLI_TOKEN" ]`, or the tracker's own `preflight` command, which names what's missing without ever printing a value.
+When diagnosing tracker credentials, never dump them to inspect: `env | grep -i token`, `echo $ACLI_TOKEN`, and similar print the raw value into that command's own tool-call result, which is permanent session history from that point on — it resurfaces in every future transcript render whether or not it started life as a leak. Use a presence-only check instead, e.g. `[ -n "$ACLI_TOKEN" ]`, or the tracker's own `preflight` command, which names what's missing without ever printing a value. `scripts/secret_guard.py` (a `PreToolUse` hook on every `Bash` call) denies the dump/echo patterns outright rather than relying on this being remembered.
 
 ## Upload
 

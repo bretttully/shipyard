@@ -57,6 +57,7 @@ REQUIRED = {
     "scripts/sy_memory.py",
     "scripts/sy_preflight.py",
     "scripts/scrub_known_secrets.py",
+    "scripts/secret_guard.py",
     "skills/tracker/SKILL.md",
     "skills/tracker/CONTRACT.md",
     "skills/tracker/jira/ADAPTER.md",
@@ -201,6 +202,8 @@ def check_hooks(errors: list[str]) -> None:
         return
     if "review_guard.py" not in text:
         fail("hooks/hooks.json must wire scripts/review_guard.py (PreToolUse)", errors)
+    if "secret_guard.py" not in text:
+        fail("hooks/hooks.json must wire scripts/secret_guard.py (PreToolUse)", errors)
     if "session_usage.py" not in text:
         fail("hooks/hooks.json must wire scripts/session_usage.py (Stop/SubagentStop)", errors)
     if "eval_events.py" not in text:
@@ -406,6 +409,7 @@ def main() -> int:
     check_invariants(errors)
 
     run_self_test("scripts/review_guard.py", errors)
+    run_self_test("scripts/secret_guard.py", errors)
     run_self_test("scripts/session_usage.py", errors)
     run_self_test("scripts/eval_events.py", errors)
     run_self_test("scripts/sy_memory.py", errors)

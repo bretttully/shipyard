@@ -11,6 +11,15 @@
         ]
       },
       {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PLUGIN_ROOT}/scripts/secret_guard.py\""
+          }
+        ]
+      },
+      {
         "hooks": [
           {
             "type": "command",
