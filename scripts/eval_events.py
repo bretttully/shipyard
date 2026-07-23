@@ -2,8 +2,12 @@
 """Trigger/trace event log for building Shipyard eval harnesses against real runs.
 
 Disabled by default — zero cost unless SY_DEBUG_EVALS is truthy. When enabled, appends one
-compact JSON line per hook firing to .scratch/sy/eval-events/<session_id>.jsonl: which skill
-or subagent triggered (Trigger), and the tool-call sequence around it (Trace). Wired into
+compact JSON line per hook firing to ~/.claude/shipyard/eval-events/<session_id>.jsonl: which
+skill or subagent triggered (Trigger), and the tool-call sequence around it (Trace). Keyed by
+session_id under the home directory, like session_usage.py's usage-agent-map ledger, rather
+than a repo-local .scratch/ — a ship build/gate subagent's cwd is a worktree under
+SY_WORKTREE_ROOT, which is deleted after use, so a cwd-relative path would fragment one
+session's trace across directories and lose the worktree-side events entirely. Wired into
 every PreToolUse call, not just the mutating ones review_guard.py cares about, because
 Trigger/Trace evals need to see Skill and Agent invocations too.
 
@@ -21,6 +25,7 @@ import sys
 
 SCHEMA = "shipyard.eval_events.v1"
 AGENT_TOOL_NAMES = {"Agent", "Task"}
+EVENTS_ROOT = Path.home() / ".claude" / "shipyard" / "eval-events"
 
 
 def enabled() -> bool:
@@ -68,16 +73,16 @@ def build_event(payload: dict) -> dict | None:
     return event
 
 
-def events_path(session_id: str, cwd: str) -> Path:
+def events_path(session_id: str) -> Path:
     safe = "".join(ch for ch in session_id if ch.isalnum() or ch in "-_") or "unknown"
-    return Path(cwd) / ".scratch" / "sy" / "eval-events" / f"{safe}.jsonl"
+    return EVENTS_ROOT / f"{safe}.jsonl"
 
 
 def record(payload: dict) -> None:
     event = build_event(payload)
     if event is None:
         return
-    path = events_path(event["session_id"], str(payload.get("cwd") or os.getcwd()))
+    path = events_path(event["session_id"])
     path.parent.mkdir(parents=True, exist_ok=True)
     line = json.dumps(event, separators=(",", ":"), sort_keys=True) + "\n"
     # O_APPEND keeps each small event write atomic on normal local filesystems.
@@ -101,23 +106,31 @@ def _self_test() -> None:
     assert detail("Read", {"file_path": "a.py"}) == {}
     assert build_event({"session_id": ""}) is None
 
+    global EVENTS_ROOT
+    original = EVENTS_ROOT
     with tempfile.TemporaryDirectory() as tmp:
-        record({
-            "session_id": "s1", "cwd": tmp, "hook_event_name": "PreToolUse",
-            "agent_type": "sy:gate", "tool_name": "Skill", "tool_input": {"skill": "ship"},
-        })
-        record({
-            "session_id": "s1", "cwd": tmp, "hook_event_name": "Stop",
-        })
-        lines = (Path(tmp) / ".scratch" / "sy" / "eval-events" / "s1.jsonl").read_text(encoding="utf-8").splitlines()
-        assert len(lines) == 2
-        first = json.loads(lines[0])
-        assert first["tool"] == "Skill"
-        assert first["detail"] == {"skill": "ship"}
-        assert first["agent_type"] == "gate"
-        second = json.loads(lines[1])
-        assert second["hook_event"] == "Stop"
-        assert "tool" not in second
+        EVENTS_ROOT = Path(tmp) / "eval-events"
+        try:
+            # Deliberately different cwd per call — a build/gate subagent runs in a worktree,
+            # so the ledger must key on session_id alone, never on the caller's cwd.
+            record({
+                "session_id": "s1", "cwd": "/repo", "hook_event_name": "PreToolUse",
+                "agent_type": "sy:gate", "tool_name": "Skill", "tool_input": {"skill": "ship"},
+            })
+            record({
+                "session_id": "s1", "cwd": "/repo-worktrees/branch", "hook_event_name": "Stop",
+            })
+            lines = events_path("s1").read_text(encoding="utf-8").splitlines()
+            assert len(lines) == 2
+            first = json.loads(lines[0])
+            assert first["tool"] == "Skill"
+            assert first["detail"] == {"skill": "ship"}
+            assert first["agent_type"] == "gate"
+            second = json.loads(lines[1])
+            assert second["hook_event"] == "Stop"
+            assert "tool" not in second
+        finally:
+            EVENTS_ROOT = original
 
 
 def main() -> int:
