@@ -52,6 +52,7 @@ REQUIRED = {
     "hooks/hooks.json",
     "scripts/session_usage.py",
     "scripts/review_guard.py",
+    "scripts/eval_events.py",
     "scripts/ci_poll.sh",
     "scripts/sy_memory.py",
     "scripts/sy_preflight.py",
@@ -161,7 +162,7 @@ def check_no_home_paths(errors: list[str]) -> None:
 def check_seam(errors: list[str]) -> None:
     scan = _component_md(seam_only=True) + [
         ROOT / "scripts/session_usage.py", ROOT / "scripts/review_guard.py", ROOT / "scripts/ci_poll.sh",
-        ROOT / "scripts/sy_memory.py", ROOT / "scripts/sy_preflight.py",
+        ROOT / "scripts/sy_memory.py", ROOT / "scripts/sy_preflight.py", ROOT / "scripts/eval_events.py",
     ]
     for p in scan:
         text = p.read_text(encoding="utf-8")
@@ -202,6 +203,8 @@ def check_hooks(errors: list[str]) -> None:
         fail("hooks/hooks.json must wire scripts/review_guard.py (PreToolUse)", errors)
     if "session_usage.py" not in text:
         fail("hooks/hooks.json must wire scripts/session_usage.py (Stop/SubagentStop)", errors)
+    if "eval_events.py" not in text:
+        fail("hooks/hooks.json must wire scripts/eval_events.py (PreToolUse/SubagentStop/Stop)", errors)
 
 
 def check_invariants(errors: list[str]) -> None:
@@ -404,6 +407,7 @@ def main() -> int:
 
     run_self_test("scripts/review_guard.py", errors)
     run_self_test("scripts/session_usage.py", errors)
+    run_self_test("scripts/eval_events.py", errors)
     run_self_test("scripts/sy_memory.py", errors)
     run_self_test("scripts/sy_preflight.py", errors)
     run_self_test("scripts/scrub_known_secrets.py", errors)
