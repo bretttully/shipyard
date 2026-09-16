@@ -1386,3 +1386,90 @@ def test_a_brief_that_cites_the_path_and_restates_a_rule_anyway_is_refused(tmp_p
     assert any("must not restate" in e and _LOOP_PINS[pin] in e for e in errors), (
         f"a cited brief restating {pin} must still be refused: {errors}"
     )
+
+
+# The rule the grants lean on, under the heading the pin is scoped to, plus the `## ` heading that bounds it.
+_LSP_RULE = (
+    "The tool is absent where a repository declares no server, and dead where its command is off the session "
+    "PATH; fall back to `Grep`/`Read` and say which navigation you could not do type-aware.\n"
+)
+_LSP_TERMINATOR = "## Prefer it where types beat text\n\nUse it for symbol questions.\n"
+_LSP_REFERENCE = (
+    f"# Language-server navigation\n\n{validate.LSP_AVAILABILITY_HEADING}\n\n{_LSP_RULE}\n{_LSP_TERMINATOR}"
+)
+
+
+def _lsp_check(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tools_line: str,
+    brief: str,
+    reference: str = _LSP_REFERENCE,
+) -> list[str]:
+    """Build the agent-plus-reference tree `check_lsp_grants` reads and return its errors."""
+    (tmp_path / "agents").mkdir()
+    (tmp_path / "skills" / "shared" / "references").mkdir(parents=True)
+    (tmp_path / validate.LSP_REFERENCE).write_text(reference, encoding="utf-8")
+    (tmp_path / "agents" / "probe.md").write_text(
+        f"---\nname: probe\ndescription: test\ntools: {tools_line}\nmodel: sonnet\n---\n{brief}", encoding="utf-8",
+    )
+    monkeypatch.setattr(validate, "ROOT", tmp_path)
+    errors: list[str] = []
+    validate.check_lsp_grants(errors)
+    return errors
+
+
+_LSP_CITATION = "Prefer it per `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/lsp.md`.\n"
+
+
+def test_a_grant_beside_its_citation_passes(tmp_path, monkeypatch):
+    errors = _lsp_check(tmp_path, monkeypatch, "Read, Grep, LSP", _LSP_CITATION)
+    assert not errors, f"a granted, cited LSP tool must pass: {errors}"
+
+
+def test_an_agent_naming_neither_the_grant_nor_the_citation_passes(tmp_path, monkeypatch):
+    errors = _lsp_check(tmp_path, monkeypatch, "Read, Grep", "body\n")
+    assert not errors, f"an agent with no business navigating symbols must not be forced into the grant: {errors}"
+
+
+def test_a_grant_without_the_citation_is_refused(tmp_path, monkeypatch):
+    errors = _lsp_check(tmp_path, monkeypatch, "Read, Grep, LSP", "body\n")
+    assert any("never cites" in error for error in errors), f"an unguided grant must be refused: {errors}"
+
+
+def test_a_citation_without_the_grant_is_refused(tmp_path, monkeypatch):
+    errors = _lsp_check(tmp_path, monkeypatch, "Read, Grep", _LSP_CITATION)
+    assert any("grants no 'LSP'" in error for error in errors), \
+        f"guidance for a tool the agent can never call must be refused: {errors}"
+
+
+@pytest.mark.parametrize("dropped", ["absent", "PATH", "`Grep`", "`Read`"])
+def test_a_reference_that_lost_the_unavailable_case_is_refused(tmp_path, monkeypatch, dropped):
+    """A hollowed reference is what turns a missing language server into a fault an agent tries to fix."""
+    reference = _LSP_REFERENCE.replace(dropped, "elsewhere")
+    errors = _lsp_check(tmp_path, monkeypatch, "Read, Grep, LSP", _LSP_CITATION, reference=reference)
+    assert any("fallback" in error for error in errors), f"dropping {dropped!r} must be refused: {errors}"
+
+
+def test_a_reference_whose_rule_moved_out_of_its_section_is_refused(tmp_path, monkeypatch):
+    """Every pinned word survives elsewhere in the file while the section stating the rule is empty."""
+    reference = (
+        f"# Language-server navigation\n\n{_LSP_RULE}\n{validate.LSP_AVAILABILITY_HEADING}\n\n"
+        f"Use the tool.\n\n{_LSP_TERMINATOR}"
+    )
+    errors = _lsp_check(tmp_path, monkeypatch, "Read, Grep, LSP", _LSP_CITATION, reference=reference)
+    assert any("fallback" in error for error in errors), \
+        f"a hollowed section whose words survive outside it must still be refused: {errors}"
+
+
+def test_a_reference_missing_the_availability_heading_is_refused(tmp_path, monkeypatch):
+    """The pin has nowhere to look once the heading is renamed, which is a loud failure, not a pass."""
+    reference = _LSP_REFERENCE.replace(validate.LSP_AVAILABILITY_HEADING, "## Something else")
+    errors = _lsp_check(tmp_path, monkeypatch, "Read, Grep, LSP", _LSP_CITATION, reference=reference)
+    assert any("heading" in error for error in errors), f"a renamed heading must be refused: {errors}"
+
+
+def test_the_lsp_grant_check_is_registered_in_main():
+    """A check nothing calls protects nothing, and `main()` is its only caller."""
+    assert "check_lsp_grants(errors)" in inspect.getsource(validate.main), \
+        "the LSP-grant check must be registered in main()"
