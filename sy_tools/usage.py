@@ -5,9 +5,9 @@ The parser is deliberately tolerant of transcript schema additions. It counts AP
 attached to assistant messages, de-duplicates by message/request id, and scans the main transcript
 plus the documented nested subagent transcript tree.
 
-`summarize()` and `render()` are the surfaces the `sy` MCP server exposes as the `usage_summarize` and
-`export_transcript` tools; `summarize`'s output is compact JSON suitable for a standalone tracker
-comment. The one command is the hook:
+`summarize()`, `handbacks()` and `render()` are the surfaces the `sy` MCP server exposes as the
+`usage_summarize`, `worker_handbacks` and `export_transcript` tools; `summarize`'s output is compact
+JSON suitable for a standalone tracker comment. The one command is the hook:
 
   PYTHONPATH="${CLAUDE_PLUGIN_ROOT}" python -m sy_tools.usage hook
       Read Claude Code hook JSON from stdin and record agent-id/type/transcript mapping.
@@ -107,21 +107,33 @@ def record_hook_event(payload: dict[str, Any]) -> None:
         os.close(fd)
 
 
-def _iter_jsonl(path: Path, warnings: list[str]) -> Iterable[dict[str, Any]]:
+def _iter_lines(path: Path, warnings: list[str]) -> Iterable[tuple[int, str]]:
     try:
-        with path.open("r", encoding="utf-8") as fh:
-            for lineno, line in enumerate(fh, 1):
-                if not line.strip():
-                    continue
-                try:
-                    value = json.loads(line)
-                except json.JSONDecodeError:
-                    warnings.append(f"malformed_json:{path.name}:{lineno}")
-                    continue
-                if isinstance(value, dict):
-                    yield value
+        raw = path.read_bytes()
     except OSError as exc:
         warnings.append(f"read_error:{path.name}:{exc.__class__.__name__}")
+        return
+    # Decoded per line rather than by a text-mode reader, so one line of invalid UTF-8 is a warning
+    # about that line instead of a UnicodeDecodeError out of the whole read. Shared by every caller that
+    # walks a transcript line-by-line, so this is the one place that promise has to hold.
+    for lineno, raw_line in enumerate(raw.splitlines(), 1):
+        if not raw_line.strip():
+            continue
+        try:
+            yield lineno, raw_line.decode("utf-8")
+        except UnicodeDecodeError:
+            warnings.append(f"decode_error:{path.name}:{lineno}")
+
+
+def _iter_jsonl(path: Path, warnings: list[str]) -> Iterable[dict[str, Any]]:
+    for lineno, line in _iter_lines(path, warnings):
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError:
+            warnings.append(f"malformed_json:{path.name}:{lineno}")
+            continue
+        if isinstance(value, dict):
+            yield value
 
 
 def resolve_main_transcript(session_id: str | None, transcript: str | None) -> Path:
@@ -157,25 +169,34 @@ def _session_id_from_path(main: Path) -> str:
     return main.stem
 
 
-def _discover_transcripts(main: Path) -> list[Path]:
+def _discover_transcripts(main: Path, warnings: list[str]) -> list[Path]:
     main = main.resolve()
     paths = [main]
     session_dir = main.with_suffix("")
     if session_dir.is_dir():
-        paths.extend(p.resolve() for p in session_dir.rglob("*.jsonl"))
+        paths.extend(_walk_jsonl(session_dir, warnings))
     # Older layouts put subagents beside the main file; that directory is project-level, so admit only
     # files whose records claim this session.
     sibling_subagents = main.parent / "subagents"
     if sibling_subagents.is_dir():
         paths.extend(
-            p.resolve()
-            for p in sibling_subagents.rglob("*.jsonl")
-            if _claims_session(p, main.stem)
+            p for p in _walk_jsonl(sibling_subagents, warnings) if _claims_session(p, main.stem, warnings)
         )
     return sorted(set(paths), key=lambda p: (p != main, str(p)))
 
 
-def _claims_session(path: Path, session_id: str) -> bool:
+def _walk_jsonl(root: Path, warnings: list[str]) -> list[Path]:
+    # `Path.rglob` swallows scandir errors, which turns an unreadable subagent tree into a clean zero.
+    def note(error: OSError) -> None:
+        warnings.append(f"{error.filename}: {error.strerror}")
+
+    found: list[Path] = []
+    for dirpath, _dirnames, filenames in os.walk(root, onerror=note):
+        found.extend(Path(dirpath, name).resolve() for name in filenames if name.endswith(".jsonl"))
+    return found
+
+
+def _claims_session(path: Path, session_id: str, warnings: list[str]) -> bool:
     checked = 0
     try:
         with path.open("r", encoding="utf-8") as fh:
@@ -194,7 +215,10 @@ def _claims_session(path: Path, session_id: str) -> bool:
                 checked += 1
                 if checked >= 20:
                     break
-    except OSError:
+    except OSError as exc:
+        # Dropping the file is right (nothing here claims the session), but a silent drop is the clean
+        # zero `_walk_jsonl`'s `onerror` exists to prevent.
+        warnings.append(f"read_error:{path.name}:{exc.__class__.__name__}")
         return False
     # No record claims any session: keep the file rather than silently dropping usage.
     return True
@@ -247,44 +271,35 @@ def _extract_file_usage(
     inferred_agent_type: str | None = None
     inferred_agent_id: str | None = None
 
-    try:
-        fh = path.open("r", encoding="utf-8")
-    except OSError as exc:
-        warnings.append(f"read_error:{path.name}:{exc.__class__.__name__}")
-        return total, by_model, inferred_agent_type, inferred_agent_id
-
-    with fh:
-        for line_no, line in enumerate(fh, 1):
-            if not line.strip():
-                continue
-            try:
-                record = json.loads(line)
-            except json.JSONDecodeError:
-                warnings.append(f"malformed_json:{path.name}:{line_no}")
-                continue
-            if not isinstance(record, dict):
-                continue
-            inferred_agent_type = inferred_agent_type or _first_string(
-                record, "agent_type", "agentType"
-            )
-            inferred_agent_id = inferred_agent_id or _first_string(
-                record, "agent_id", "agentId"
-            )
-            message = record.get("message")
-            if not isinstance(message, dict):
-                continue
-            usage = message.get("usage")
-            if not isinstance(usage, dict):
-                continue
-            identity = _record_identity(record, message, path, line_no)
-            if identity in seen:
-                continue
-            seen.add(identity)
-            item = Usage()
-            item.add_mapping(usage)
-            total.add(item)
-            model = str(message.get("model") or record.get("model") or "unknown")
-            by_model[model].add(item)
+    for line_no, line in _iter_lines(path, warnings):
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            warnings.append(f"malformed_json:{path.name}:{line_no}")
+            continue
+        if not isinstance(record, dict):
+            continue
+        inferred_agent_type = inferred_agent_type or _first_string(
+            record, "agent_type", "agentType"
+        )
+        inferred_agent_id = inferred_agent_id or _first_string(
+            record, "agent_id", "agentId"
+        )
+        message = record.get("message")
+        if not isinstance(message, dict):
+            continue
+        usage = message.get("usage")
+        if not isinstance(usage, dict):
+            continue
+        identity = _record_identity(record, message, path, line_no)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        item = Usage()
+        item.add_mapping(usage)
+        total.add(item)
+        model = str(message.get("model") or record.get("model") or "unknown")
+        by_model[model].add(item)
     return total, by_model, inferred_agent_type, inferred_agent_id
 
 
@@ -304,6 +319,32 @@ def _normalize_agent_type(agent_type: str | None) -> str | None:
     return agent_type.split(":")[-1]
 
 
+def _refused_handbacks(path: Path, warnings: list[str]) -> tuple[int, str | None, str | None]:
+    calls: set[str] = set()
+    refused: set[str] = set()
+    inferred_agent_type: str | None = None
+    inferred_agent_id: str | None = None
+    for record in _iter_jsonl(path, warnings):
+        inferred_agent_type = inferred_agent_type or _first_string(
+            record, "agent_type", "agentType", "attributionAgent"
+        )
+        inferred_agent_id = inferred_agent_id or _first_string(record, "agent_id", "agentId")
+        message = record.get("message")
+        if not isinstance(message, dict):
+            continue
+        for block in _content_blocks(message.get("content")):
+            kind = block.get("type")
+            if kind == "tool_use" and block.get("name") == "SubagentHandback":
+                calls.add(str(block.get("id")))
+            elif (
+                kind == "tool_result"
+                and str(block.get("tool_use_id")) in calls
+                and _reports_refusal(block.get("content"))
+            ):
+                refused.add(str(block.get("tool_use_id")))
+    return len(refused), inferred_agent_type, inferred_agent_id
+
+
 def summarize(
     main: Path,
     *,
@@ -316,9 +357,9 @@ def summarize(
     that cannot be read, or a line that will not parse, becomes a `warnings` entry, never a failure.
     """
     session_id = _session_id_from_path(main)
-    transcripts = _discover_transcripts(main)
-    by_path, by_id = _load_agent_map(session_id)
     warnings: list[str] = []
+    transcripts = _discover_transcripts(main, warnings)
+    by_path, by_id = _load_agent_map(session_id)
     seen: set[str] = set()
     total = Usage()
     grouped: dict[tuple[str, str], Usage] = defaultdict(Usage)
@@ -370,8 +411,68 @@ def summarize(
     }
     if task:
         result["task"] = task
-    if warnings:
-        result["warnings"] = sorted(set(warnings))
+    # Always present: an absent key once made an unreadable tree look like a healthy zero.
+    result["warnings"] = sorted(set(warnings))
+    return result
+
+
+def handbacks(main: Path) -> dict[str, Any]:
+    """The `shipyard.worker_handbacks.v1` report for one session: every refused `SubagentHandback` call.
+
+    `main` is the main transcript; the whole subagent tree beneath it is read with it, because a refusal
+    is recorded only in the refused agent's own transcript. A hand-back that was delivered is not
+    reported. A transcript that cannot be read, or a line that will not parse, becomes a `warnings`
+    entry, never a failure.
+    """
+    session_id = _session_id_from_path(main)
+    warnings: list[str] = []
+    transcripts = _discover_transcripts(main, warnings)
+    by_path, by_id = _load_agent_map(session_id)
+    grouped: dict[tuple[str, str, str], int] = defaultdict(int)
+    transcript_of: dict[tuple[str, str, str], str] = {}
+
+    main_resolved = main.resolve()
+    for path in transcripts:
+        refused, inferred_type, inferred_id = _refused_handbacks(path, warnings)
+        if not refused:
+            continue
+        if path == main_resolved:
+            agent_type = "main"
+        else:
+            agent_type = (
+                by_path.get(path)
+                or (by_id.get(inferred_id) if inferred_id else None)
+                or _normalize_agent_type(inferred_type)
+                or "unknown_subagent"
+            )
+        # Without an agent id the path keys the row: same-typed transcripts would otherwise merge onto
+        # one row whose single `transcript` hides every other transcript behind the summed count.
+        key = (agent_type, inferred_id or "", "" if inferred_id else str(path))
+        grouped[key] += refused
+        transcript_of.setdefault(key, str(path))
+
+    by_agent = [
+        {
+            "agent_type": key[0],
+            "agent_id": key[1],
+            "refused": refused,
+            "transcript": transcript_of[key],
+        }
+        for key, refused in sorted(grouped.items())
+    ]
+    result: dict[str, Any] = {
+        "schema": "shipyard.worker_handbacks.v1",
+        "session_id": session_id,
+        "scope": "main_plus_subagents",
+        "transcripts": {
+            "main": 1,
+            "subagents": max(len(transcripts) - 1, 0),
+        },
+        "refused": sum(grouped.values()),
+        "by_agent": by_agent,
+        # Always present: an absent key once made an unreadable tree look like a healthy zero.
+        "warnings": sorted(set(warnings)),
+    }
     return result
 
 
@@ -417,6 +518,33 @@ def _content_blocks(content: Any) -> Iterable[dict[str, Any]]:
         for block in content:
             if isinstance(block, dict):
                 yield block
+
+
+def _reports_refusal(content: Any) -> bool:
+    """Whether a `SubagentHandback` tool result carries a `success: false` payload.
+
+    The payload is JSON inside an MCP content block, so it is parsed: a substring match on one
+    serialization misses the same object with a space after the colon or its keys in another order.
+    """
+    return any(isinstance(payload, dict) and payload.get("success") is False for payload in _payloads(content))
+
+
+def _payloads(content: Any) -> Iterable[Any]:
+    for block in _content_blocks(content):
+        yield block
+        if block.get("type") == "text":
+            yield from _parsed_json(str(block.get("text", "")))
+        nested = block.get("content")
+        if isinstance(nested, (str, list)):
+            yield from _payloads(nested)
+
+
+def _parsed_json(text: str) -> list[Any]:
+    try:
+        value = json.loads(text)
+    except json.JSONDecodeError:
+        return []
+    return value if isinstance(value, list) else [value]
 
 
 def _tool_result_text(content: Any) -> str:
@@ -491,8 +619,8 @@ def _render_row(
 
 
 def _first_timestamp(path: Path) -> str:
-    warnings: list[str] = []
-    for record in _iter_jsonl(path, warnings):
+    # Ordering only; a read failure here is reported when the section for this transcript is rendered.
+    for record in _iter_jsonl(path, []):
         ts = record.get("timestamp")
         if ts:
             return str(ts)
@@ -520,7 +648,8 @@ def render(main: Path, *, task: str | None) -> str:
     Tool inputs, tool results and thinking blocks are truncated to `render_limits()`.
     """
     session_id = _session_id_from_path(main)
-    transcripts = _discover_transcripts(main)
+    warnings: list[str] = []
+    transcripts = _discover_transcripts(main, warnings)
     by_path, _ = _load_agent_map(session_id)
     main_resolved = main.resolve()
     subs = sorted(
@@ -532,6 +661,7 @@ def render(main: Path, *, task: str | None) -> str:
     if task:
         out.append(f"task: {task}")
     out.append(f"transcripts: 1 main + {len(subs)} subagents")
+    out += [f"warning: {w}" for w in sorted(set(warnings))]
     out.append("")
 
     sections = [(main_resolved, f"MAIN SESSION {session_id}")]
@@ -540,9 +670,10 @@ def render(main: Path, *, task: str | None) -> str:
         out += ["=" * 78, header, "=" * 78]
         tool_names: dict[str, str] = {}
         pending_interjections: dict[str, int] = {}
-        warnings: list[str] = []
+        already_reported = len(warnings)
         for record in _iter_jsonl(path, warnings):
             _render_row(record, tool_names, pending_interjections, out)
+        out += [f"warning: {w}" for w in warnings[already_reported:]]
         out.append("")
     return "\n".join(out) + "\n"
 

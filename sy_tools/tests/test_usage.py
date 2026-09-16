@@ -191,6 +191,22 @@ def test_render_keeps_a_genuine_user_turn_after_an_enqueue_and_remove(session_tr
     assert "[2026-07-09 10:00:06] USER" in rendered, "genuine user turn after enqueue+remove must render"
 
 
+def test_render_warns_about_a_transcript_it_could_not_parse(session_tree):
+    """A transcript that will not parse must say so in the render; an empty section reads as a quiet agent."""
+    broken = session_tree.with_suffix("") / "subagents" / "agent-broken.jsonl"
+    broken.write_text("{not json\n", encoding="utf-8")
+    rendered = usage.render(session_tree, task="PROJ-1")
+    assert any(
+        line.startswith("warning:") and "agent-broken.jsonl" in line for line in rendered.splitlines()
+    ), rendered
+
+
+def test_summarize_always_carries_a_warnings_key(session_tree):
+    """An absent key on a clean tree is indistinguishable from a consumer forgetting to look for it."""
+    result = usage.summarize(session_tree, phase="ship", task="PROJ-1")
+    assert result["warnings"] == [], result
+
+
 @pytest.fixture
 def config_layers(tmp_path, monkeypatch):
     """A live but throwaway config layer chain, with `render_limits()`'s cache reset around each use.
@@ -267,3 +283,208 @@ def test_a_non_numeric_configured_limit_falls_back_instead_of_crashing_the_rende
     assert limits == usage._DEFAULT_RENDER_LIMITS, (
         "a non-numeric resolved value must fall back to shipped defaults, not crash the render"
     )
+
+
+def _refusal_records(tool_use_id: str, payload: object = None) -> list[dict]:
+    return [
+        {
+            "type": "assistant",
+            "message": {
+                "id": "h1",
+                "content": [{"type": "tool_use", "id": tool_use_id, "name": "SubagentHandback", "input": {}}],
+            },
+        },
+        {
+            "type": "user",
+            "message": {
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_use_id,
+                        "content": '{"success":false,"reason":"already delivered"}' if payload is None else payload,
+                    }
+                ]
+            },
+        },
+    ]
+
+
+def test_handbacks_counts_a_replayed_refusal_once(tmp_path, monkeypatch):
+    """A verbatim-replayed transcript span is one refusal, not two; the reader must dedup by tool_use_id."""
+    monkeypatch.setattr(usage, "LEDGER_ROOT", tmp_path / "ledger")
+    main = tmp_path / "s1.jsonl"
+    records = _refusal_records("call-1") * 2
+    main.write_text("".join(json.dumps(r) + "\n" for r in records), encoding="utf-8")
+
+    result = usage.handbacks(main)
+    assert result["refused"] == 1, result
+
+
+def test_handbacks_reports_an_unreadable_subagent_tree_instead_of_a_clean_zero(tmp_path, monkeypatch):
+    """An unreadable subagent dir must name itself in `warnings`; a bare zero reads as health."""
+    monkeypatch.setattr(usage, "LEDGER_ROOT", tmp_path / "ledger")
+    main = tmp_path / "s1.jsonl"
+    main.write_text("", encoding="utf-8")
+    subdir = tmp_path / "s1" / "subagents"
+    subdir.mkdir(parents=True)
+    (subdir / "agent-a.jsonl").write_text(
+        "".join(json.dumps(r) + "\n" for r in _refusal_records("call-1")), encoding="utf-8"
+    )
+
+    # Injected rather than chmod'd: root ignores the permissions that would otherwise make the tree unreadable.
+    def denied_walk(top, onerror=None, **kwargs):
+        assert onerror is not None
+        onerror(PermissionError(13, "Permission denied", str(top)))
+        return iter(())
+
+    monkeypatch.setattr(usage.os, "walk", denied_walk)
+    result = usage.handbacks(main)
+
+    assert result["refused"] == 0, result
+    assert any(str(tmp_path / "s1") in warning for warning in result["warnings"]), result
+
+
+@pytest.mark.parametrize("payload", [
+    '{"reason": "already delivered", "success": false}',
+    '{\n  "success": false,\n  "reason": "already delivered"\n}',
+    [{"type": "text", "text": '{"success": false, "reason": "already delivered"}'}],
+])
+def test_handbacks_counts_a_refusal_however_its_payload_is_serialized(tmp_path, monkeypatch, payload):
+    """Spacing, key order and content-block wrapping are all valid JSON; only a substring match cares."""
+    monkeypatch.setattr(usage, "LEDGER_ROOT", tmp_path / "ledger")
+    main = tmp_path / "s1.jsonl"
+    records = _refusal_records("call-1", payload)
+    main.write_text("".join(json.dumps(r) + "\n" for r in records), encoding="utf-8")
+
+    assert usage.handbacks(main)["refused"] == 1, payload
+
+
+def test_handbacks_does_not_count_a_delivered_handback_as_refused(tmp_path, monkeypatch):
+    """The other half of parsing the payload: `success: true` must stay uncounted."""
+    monkeypatch.setattr(usage, "LEDGER_ROOT", tmp_path / "ledger")
+    main = tmp_path / "s1.jsonl"
+    records = _refusal_records("call-1", '{"success": true, "note": "success:false is not the verdict"}')
+    main.write_text("".join(json.dumps(r) + "\n" for r in records), encoding="utf-8")
+
+    assert usage.handbacks(main)["refused"] == 0
+
+
+def test_an_unreadable_legacy_layout_transcript_warns_instead_of_vanishing(tmp_path, monkeypatch):
+    """The legacy sibling layout drops a file that claims no session; an unreadable one must say so."""
+    monkeypatch.setattr(usage, "LEDGER_ROOT", tmp_path / "ledger")
+    main = tmp_path / "s1.jsonl"
+    main.write_text("", encoding="utf-8")
+    legacy = tmp_path / "subagents"
+    legacy.mkdir()
+    unreadable = legacy / "agent-b.jsonl"
+    unreadable.write_text("", encoding="utf-8")
+
+    # Injected rather than chmod'd: root ignores the permissions that would otherwise make the file unreadable.
+    target = unreadable.resolve()
+    real_open = Path.open
+
+    def denied_open(self, *args, **kwargs):
+        if self.resolve() == target:
+            raise PermissionError(13, "Permission denied", str(self))
+        return real_open(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", denied_open)
+    result = usage.handbacks(main)
+
+    assert any("agent-b.jsonl" in warning for warning in result["warnings"]), result
+
+
+def test_handbacks_keeps_a_row_per_transcript_when_no_agent_id_surfaces(tmp_path, monkeypatch):
+    """Same-typed transcripts with no agent id must not merge: one row's `transcript` hides the rest."""
+    monkeypatch.setattr(usage, "LEDGER_ROOT", tmp_path / "ledger")
+    main = tmp_path / "s1.jsonl"
+    main.write_text("", encoding="utf-8")
+    subdir = tmp_path / "s1" / "subagents"
+    subdir.mkdir(parents=True)
+    first = subdir / "agent-a.jsonl"
+    second = subdir / "agent-b.jsonl"
+    first.write_text(
+        "".join(json.dumps(r) + "\n" for r in [{"agent_type": "sy:slice"}, *_refusal_records("call-1")]),
+        encoding="utf-8",
+    )
+    second.write_text(
+        "".join(
+            json.dumps(r) + "\n"
+            for r in [{"agent_type": "sy:slice"}, *_refusal_records("call-2"), *_refusal_records("call-3")]
+        ),
+        encoding="utf-8",
+    )
+
+    result = usage.handbacks(main)
+
+    assert result["refused"] == 3, result
+    rows = {row["transcript"]: row for row in result["by_agent"]}
+    assert set(rows) == {str(first.resolve()), str(second.resolve())}, result
+    assert rows[str(first.resolve())]["refused"] == 1, result
+    assert rows[str(second.resolve())]["refused"] == 2, result
+    assert all(row["agent_type"] == "slice" and row["agent_id"] == "" for row in result["by_agent"]), result
+
+
+def test_handbacks_still_merges_two_transcripts_of_one_agent_id(tmp_path, monkeypatch):
+    """The common case is unchanged: one agent's id groups its transcripts onto a single row."""
+    monkeypatch.setattr(usage, "LEDGER_ROOT", tmp_path / "ledger")
+    main = tmp_path / "s1.jsonl"
+    main.write_text("", encoding="utf-8")
+    subdir = tmp_path / "s1" / "subagents"
+    subdir.mkdir(parents=True)
+    for name, call in (("agent-a.jsonl", "call-1"), ("agent-b.jsonl", "call-2")):
+        (subdir / name).write_text(
+            "".join(
+                json.dumps(r) + "\n"
+                for r in [{"agent_type": "sy:slice", "agent_id": "ag-1"}, *_refusal_records(call)]
+            ),
+            encoding="utf-8",
+        )
+
+    result = usage.handbacks(main)
+
+    assert result["by_agent"] == [
+        {
+            "agent_type": "slice",
+            "agent_id": "ag-1",
+            "refused": 2,
+            "transcript": str((subdir / "agent-a.jsonl").resolve()),
+        }
+    ], result
+
+
+def test_a_line_of_invalid_utf8_warns_instead_of_killing_the_read(tmp_path, monkeypatch):
+    """Text-mode iteration raised `UnicodeDecodeError` out of `handbacks`; only that line may be lost."""
+    monkeypatch.setattr(usage, "LEDGER_ROOT", tmp_path / "ledger")
+    main = tmp_path / "s1.jsonl"
+    records = _refusal_records("call-1")
+    main.write_bytes(
+        json.dumps(records[0]).encode("utf-8")
+        + b'\n{"type": "assistant", "note": "\xff\xfe not utf-8"}\n'
+        + json.dumps(records[1]).encode("utf-8")
+        + b"\n"
+    )
+
+    result = usage.handbacks(main)
+
+    assert result["refused"] == 1, result
+    assert result["warnings"] == ["decode_error:s1.jsonl:2"], result
+
+
+def test_summarize_warns_instead_of_raising_on_a_line_of_invalid_utf8(tmp_path, monkeypatch):
+    """`summarize()`'s own doc promises this never fails; its token-counting path is a separate read
+    from `handbacks()`'s and regressed independently of it."""
+    monkeypatch.setattr(usage, "LEDGER_ROOT", tmp_path / "ledger")
+    main = tmp_path / "s1.jsonl"
+    usage_record = {"type": "assistant", "message": {"model": "claude", "usage": {"input_tokens": 3}}}
+    main.write_bytes(
+        json.dumps(usage_record).encode("utf-8")
+        + b'\n{"type": "assistant", "note": "\xff\xfe not utf-8"}\n'
+        + json.dumps(usage_record).encode("utf-8")
+        + b"\n"
+    )
+
+    result = usage.summarize(main, phase="ship", task="PROJ-1")
+
+    assert result["totals"]["input_tokens"] == 6, result
+    assert result["warnings"] == ["decode_error:s1.jsonl:2"], result

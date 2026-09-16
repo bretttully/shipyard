@@ -31,6 +31,17 @@ def test_repo_review_writes_into_the_root_the_resolver_itself_reports():
     assert review_guard.decision('repo-review', 'Write', sibling, cwd=cwd) is not None
 
 
+@pytest.mark.parametrize('mode', sorted(review_guard.SANDBOX_WRITE_MODES))
+def test_every_sandbox_write_mode_is_contained_by_the_resolved_root(mode):
+    """Parametrized over the live set, so a mode granted `Write` later inherits containment automatically."""
+    cwd = str(Path(__file__).resolve().parent)
+    root = config.repo_scratch_dir(Path(cwd))
+    assert review_guard.decision(mode, 'Write', {'file_path': str(root / 'findings.md')}, cwd=cwd) is None
+    assert review_guard.decision(mode, 'Write', {'file_path': '/tmp/out.txt'}, cwd=cwd) is not None
+    escape = {'file_path': str(root / '..' / 'elsewhere' / 'a.py')}
+    assert review_guard.decision(mode, 'Write', escape, cwd=cwd) is not None
+
+
 def test_repo_standards_is_refused_a_write_even_inside_the_sandbox_root():
     """In `REVIEW_MODES` but not `SANDBOX_WRITE_MODES`; keying either write site on the wrong set inverts this."""
     cwd = str(Path(__file__).resolve().parent)
@@ -39,6 +50,44 @@ def test_repo_standards_is_refused_a_write_even_inside_the_sandbox_root():
     redirect = {'command': f'echo x > {root / "x.md"}'}
     assert review_guard.decision('repo-standards', 'Bash', redirect, cwd=cwd) is not None
     assert review_guard.decision('repo-standards', 'Bash', {'command': 'grep -rn x skills/'}, cwd=cwd) is None
+
+
+@pytest.mark.parametrize('mode', sorted(review_guard.SANDBOX_WRITE_MODES))
+@pytest.mark.parametrize('command', [
+    'echo x 2> /etc/o',
+    'echo x 1>/etc/o',
+    'echo x &> /etc/o',
+    'echo x >& /etc/o',
+    'echo x 2>> /etc/o',
+])
+def test_fd_prefixed_redirection_out_of_the_sandbox_is_refused(mode, command):
+    """`2>`, `&>` and `>&` write a file exactly as `>` does; reading only the bare `>` let them escape."""
+    cwd = str(Path(__file__).resolve().parent)
+    assert review_guard.decision(mode, 'Bash', {'command': command}, cwd=cwd) is not None
+
+
+@pytest.mark.parametrize('mode', sorted(review_guard.REVIEW_MODES))
+@pytest.mark.parametrize('command', [
+    'pytest -q 2>&1',
+    'pytest -q > /dev/null 2>&1',
+    'pytest -q >&1',
+])
+def test_fd_duplication_is_not_read_as_a_redirect_to_a_file(mode, command):
+    """An `&`-form operator with a bare-digit target names no file, so there is nothing to contain."""
+    cwd = str(Path(__file__).resolve().parent)
+    assert review_guard.decision(mode, 'Bash', {'command': command}, cwd=cwd) is None
+
+
+@pytest.mark.parametrize('mode', sorted(review_guard.REVIEW_MODES))
+@pytest.mark.parametrize('command', [
+    'echo x > 1',
+    'echo x 2> 1',
+    'echo x 2>>1',
+])
+def test_a_digit_target_without_the_ampersand_is_a_file_named_for_that_digit(mode, command):
+    """`2>1` writes a file called `1` in the cwd; exempting every bare digit let that escape the sandbox."""
+    cwd = str(Path(__file__).resolve().parent)
+    assert review_guard.decision(mode, 'Bash', {'command': command}, cwd=cwd) is not None
 
 
 @pytest.mark.parametrize('mode', sorted(review_guard.REVIEW_MODES))

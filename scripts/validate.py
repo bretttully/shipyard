@@ -91,8 +91,8 @@ HUMAN_TEXT_PINS = {
     "short_text_floor": "Do not touch short text, at any destination.",
     "post_comment_pass": "tighten it with `/sy:tighten` before posting",
 }
-# Every literal `check_gate_loop` pins, and the headings it scopes them to, one copy each for the same
-# reason `HUMAN_TEXT_PINS` is one copy.
+# Every literal `check_gate_loop` and `check_agent_returns` pin, and the headings and paragraph anchors they
+# scope them to, one copy each for the same reason `HUMAN_TEXT_PINS` is one copy.
 GATE_LOOP_PINS = {
     "handover_code": "`handover`",
     "handover": "handover",
@@ -108,12 +108,37 @@ GATE_LOOP_PINS = {
     "cost_boundary": "Cost comes out of the loop, never the reviewer",
     "gate_min_model": "frontier",
     "gate_min_effort": "max",
+    "handback_is_one_shot": "spend it on the contract return and nothing else",
+    "no_midround_channel": "no mid-round channel",
+    "persist_before_return": "persist before the return",
+    "return_terminates": "a return ends the agent's turn",
+    "checkpoint_before_return": "durable before the return",
+    "round_write_ordering": "before any fix dispatch or promote",
+    "reconcile_ground_truth": "ground truth wins",
+    "gate_verdict_file": "VERDICT_FILE:",
+    "worker_verdict_field": "VERDICT:",
+    "worker_dispositions_field": "DISPOSITIONS:",
+    "verdict_not_parsed": "names its path and never reads it",
+    "persist_scratch_root": 'scratch_dir {"repo": true}',
+    "persist_name_shape": "<kind>-<scope>-<UTC basic timestamp>.md",
 }
+# The hand-back rules and the persist recipe, stated once in `skills/shared/references/agent-returns.md`
+# and cited from every brief: `check_agent_returns` pins each present there and absent everywhere else.
+AGENT_RETURN_PINS = (
+    "handback_is_one_shot",
+    "no_midround_channel",
+    "persist_before_return",
+    "return_terminates",
+    "persist_scratch_root",
+    "persist_name_shape",
+)
 GATE_LOOP_SECTIONS = {
     "worker_contract": "## Worker contract",
     "pre_gate": "## Pre-gate checkpoint",
     "fix_cycle": "## Fix cycle",
     "return_contract": "## Return contract",
+    "state_router": "## State router",
+    "slice_manifest": "Track build progress as a slice manifest",
 }
 _SCRATCH_HINT = "the `sy` server's `scratch_dir` tool"
 _SCRATCH_REF_SUFFIXES = {".md", ".py", ".sh", ".json", ".yml", ".yaml", ".toml"}
@@ -185,6 +210,7 @@ REQUIRED = {
     "skills/shared/references/memory.md",
     "skills/shared/references/user-interaction.md",
     "skills/shared/references/write-integrity.md",
+    "skills/shared/references/agent-returns.md",
     "skills/shared/references/scope-discipline.md",
     "skills/shared/references/preflight.md",
     "skills/shared/references/debate.md",
@@ -432,6 +458,39 @@ def _bounded_section(text: str, heading: str, rel: str, errors: list[str]) -> st
     return text[start.end() : start.end() + terminator.start()]
 
 
+def _fenced_blocks(text: str, section_heading: str) -> list[str]:
+    """The bodies of the fenced code blocks under `section_heading`, in the order they appear.
+
+    A field pin reads the block a reader copies, never the section: the same literal appears in the prose
+    around it -- a sentence naming `VERDICT:` while explaining the form -- and a substring pin over the whole
+    section stays satisfied by that sentence long after the field it names is gone.
+
+    The blocks are returned rather than resolved because a pinned section carrying more than one is refused,
+    not read: taking the first decides the pin's scope by ordering, and joining them lets a decoy fence
+    carrying the field satisfy a pin the block a reader copies has already lost.
+    """
+    start = re.search(rf"^{re.escape(section_heading)}", text, re.M)
+    if start is None:
+        return []
+    section = text[start.end():]
+    terminator = re.search(r"^## ", section, re.M)
+    if terminator is not None:
+        section = section[:terminator.start()]
+    return [m.group(1) for m in re.finditer(r"^```[^\n]*\n(.*?)^```", section, re.M | re.S)]
+
+
+def _paragraph(text: str, anchor: str) -> str | None:
+    """The blank-line-delimited paragraph carrying `anchor`, or None when no paragraph carries it.
+
+    Scoped for the reason `_fenced_blocks` is: a later paragraph back-referencing the rule repeats its
+    wording, and a whole-file pin cannot tell that echo from the normative clause it is quoting.
+    """
+    for paragraph in re.split(r"\n\s*\n", text):
+        if anchor in paragraph:
+            return paragraph
+    return None
+
+
 def _json_path(obj: object, *keys: str) -> object | None:
     """The value at a chain of mapping keys, or None the moment a hop is missing or is not a mapping.
 
@@ -463,6 +522,28 @@ def _last_section(tail: str, rel: str, heading: str, errors: list[str]) -> str:
     return tail[:later.start()]
 
 
+def _tools_entries(text: str) -> list[str]:
+    """An agent's single-line `tools:` allowlist split into entries, empty when it declares none."""
+    declared = re.search(r"^tools:[ \t]*(.*)$", _frontmatter_block(text), re.M)
+    value = declared.group(1).strip() if declared else ""
+    return [entry.strip() for entry in value.split(",") if entry.strip()]
+
+
+def _guard_mode_set(source: str, name: str) -> set[str] | None:
+    """The mode names in `review_guard.py`'s `name` set literal, or None when no such literal is there.
+
+    The guard is read as text rather than imported, as `check_gate_justification` reads `sy_tools/server.py`:
+    importing it to read two constants would run a hook module's import side effects inside the validator.
+
+    The whole statement must be one set literal: a `{...} | {...}` union returns None rather than the first
+    operand, because a partial set silently exempts every mode in the operands the pin never read.
+    """
+    match = re.search(rf"^{name}\s*=\s*(\{{[^{{}}]*\}})\s*$", source, re.M)
+    if match is None:
+        return None
+    return set(re.findall(r"['\"]([\w-]+)['\"]", match.group(1)))
+
+
 def check_gate_loop(errors: list[str]) -> None:
     """GATE's one-round-per-dispatch shape: the `handover` return, its triage delegate, and cross-round recurrence.
 
@@ -476,12 +557,16 @@ def check_gate_loop(errors: list[str]) -> None:
     build_rel = "skills/ship/references/implementation.md"
     worker_rel = "agents/ship-gate.md"
     triage_rel = "agents/gate-triage.md"
+    gate_rel = "agents/gate.md"
+    guard_rel = "sy_tools/guards/review_guard.py"
     skill = (ROOT / skill_rel).read_text(encoding="utf-8")
     gate_ref = (ROOT / gate_ref_rel).read_text(encoding="utf-8")
     start = (ROOT / start_rel).read_text(encoding="utf-8")
     build = (ROOT / build_rel).read_text(encoding="utf-8")
     worker = (ROOT / worker_rel).read_text(encoding="utf-8")
     triage = (ROOT / triage_rel).read_text(encoding="utf-8")
+    gate = (ROOT / gate_rel).read_text(encoding="utf-8")
+    guard = (ROOT / guard_rel).read_text(encoding="utf-8")
 
     contract = _bounded_section(skill, GATE_LOOP_SECTIONS["worker_contract"], skill_rel, errors)
     if contract is not None:
@@ -499,6 +584,14 @@ def check_gate_loop(errors: list[str]) -> None:
                 "qualifier bars every phase but BUILD",
                 errors,
             )
+        if GATE_LOOP_PINS["checkpoint_before_return"] not in contract:
+            fail(
+                f"{skill_rel} § Worker contract must require the worker's own checkpoint to be "
+                f"`{GATE_LOOP_PINS['checkpoint_before_return']}`; a checkpoint living only in the return is "
+                "lost with any hand-back the parent never receives, and the continuation resumes from the "
+                "last write that did land",
+                errors,
+            )
     pre_gate = _bounded_section(skill, GATE_LOOP_SECTIONS["pre_gate"], skill_rel, errors)
     if pre_gate is not None and GATE_LOOP_PINS["handover"] in pre_gate.lower():
         fail(
@@ -507,10 +600,35 @@ def check_gate_loop(errors: list[str]) -> None:
             "expect it from BUILD",
             errors,
         )
+    manifest = _paragraph(build, GATE_LOOP_SECTIONS["slice_manifest"])
+    if manifest is None:
+        fail(
+            f"{build_rel} must keep the paragraph anchored on "
+            f"`{GATE_LOOP_SECTIONS['slice_manifest']}`; BUILD's durability rule is scoped to it, and with "
+            "no such paragraph the pin has nowhere to look",
+            errors,
+        )
+    elif GATE_LOOP_PINS["checkpoint_before_return"] not in manifest:
+        fail(
+            f"{build_rel} must require BUILD's checkpoint to be "
+            f"`{GATE_LOOP_PINS['checkpoint_before_return']}` where it defines the slice manifest; the rule "
+            "binds every phase, and a procedure that omits it leaves its own worker writing the checkpoint "
+            "only into a return",
+            errors,
+        )
     if GATE_LOOP_PINS["handover"] in build.lower():
         fail(
             f"{build_rel} must not name `handover`: it is BUILD's own procedure end to end, and a GATE-only "
             "return named inside it is one BUILD reads as available to itself",
+            errors,
+        )
+
+    state_router = _bounded_section(skill, GATE_LOOP_SECTIONS["state_router"], skill_rel, errors)
+    if state_router is not None and GATE_LOOP_PINS["reconcile_ground_truth"] not in state_router:
+        fail(
+            f"{skill_rel} § State router must say that `{GATE_LOOP_PINS['reconcile_ground_truth']}` when the "
+            "state file and a return disagree; without that, the parent has two records of the same round and "
+            "no rule for which one it acts on",
             errors,
         )
 
@@ -532,6 +650,59 @@ def check_gate_loop(errors: list[str]) -> None:
             fail(
                 f"{worker_rel} § Return contract must show the `{GATE_LOOP_PINS['handover_block']}` form; a "
                 "return the worker's own brief never shows is one it never emits",
+                errors,
+            )
+        done_blocks = _fenced_blocks(worker, GATE_LOOP_SECTIONS["return_contract"])
+        if len(done_blocks) != 1:
+            fail(
+                f"{worker_rel} § Return contract must show its status block in exactly one fenced code block, "
+                f"and carries {len(done_blocks)}; the field pins below read the block a worker copies -- with "
+                "no fence they would pass on any sentence of the surrounding prose that happens to name the "
+                "field, and with a second fence on a decoy block the copied one no longer has to carry it",
+                errors,
+            )
+        else:
+            done_block = done_blocks[0]
+            if GATE_LOOP_PINS["worker_verdict_field"] not in done_block:
+                fail(
+                    f"{worker_rel} § Return contract's block must carry a "
+                    f"`{GATE_LOOP_PINS['worker_verdict_field']}` field; the persisted verdict is the round's "
+                    "only durable record of what was judged, and a return form that names no path leaves the "
+                    "parent nothing to point a human at",
+                    errors,
+                )
+            if GATE_LOOP_PINS["worker_dispositions_field"] not in done_block:
+                fail(
+                    f"{worker_rel} § Return contract's block must carry a "
+                    f"`{GATE_LOOP_PINS['worker_dispositions_field']}` field; the dispositions file is the only "
+                    "durable record of what each finding was judged to be, and a block naming only the verdict "
+                    "sends the parent a round it cannot account for finding by finding",
+                    errors,
+                )
+
+    # `agents/gate.md`'s own heading carries a token-target suffix, so it is matched by prefix; the pin under
+    # it needs no `_last_section` bound, because `_fenced_blocks` ends its own scope at the next `## `.
+    if re.search(rf"^{re.escape(GATE_LOOP_SECTIONS['return_contract'])}", gate, re.M) is None:
+        fail(
+            f"{gate_rel} must keep its `{GATE_LOOP_SECTIONS['return_contract']}` heading; the reviewer's "
+            "persisted-verdict pin is scoped to it",
+            errors,
+        )
+    else:
+        gate_blocks = _fenced_blocks(gate, GATE_LOOP_SECTIONS["return_contract"])
+        if len(gate_blocks) != 1:
+            fail(
+                f"{gate_rel} § Return contract must show its return block in exactly one fenced code block, "
+                f"and carries {len(gate_blocks)}; the `{GATE_LOOP_PINS['gate_verdict_file']}` pin reads the "
+                "block the reviewer copies -- the prose around it names the same literal while explaining the "
+                "field, and a second fence is a second candidate for the block being pinned",
+                errors,
+            )
+        elif GATE_LOOP_PINS["gate_verdict_file"] not in gate_blocks[0]:
+            fail(
+                f"{gate_rel} § Return contract must name `{GATE_LOOP_PINS['gate_verdict_file']}`; the reviewer "
+                "holds `Write` so its caller never re-runs the pass to recover the report, and a verdict with "
+                "no named path is one that exists only inside a return the caller may compress away",
                 errors,
             )
 
@@ -585,6 +756,27 @@ def check_gate_loop(errors: list[str]) -> None:
                 "again",
                 errors,
             )
+        if GATE_LOOP_PINS["checkpoint_before_return"] not in fix_cycle:
+            fail(
+                f"{gate_ref_rel} § Fix cycle must make the round's checkpoint "
+                f"`{GATE_LOOP_PINS['checkpoint_before_return']}`; per-round dispatch means a hand-back that "
+                "never arrives takes an in-return-only checkpoint with it",
+                errors,
+            )
+        if GATE_LOOP_PINS["round_write_ordering"] not in fix_cycle:
+            fail(
+                f"{gate_ref_rel} § Fix cycle must place that write "
+                f"`{GATE_LOOP_PINS['round_write_ordering']}`; a round that writes its log at the end records "
+                "nothing about the round that died applying a fix, which is the round most worth recording",
+                errors,
+            )
+        if GATE_LOOP_PINS["verdict_not_parsed"] not in fix_cycle:
+            fail(
+                f"{gate_ref_rel} § Fix cycle must say the worker `{GATE_LOOP_PINS['verdict_not_parsed']}` for "
+                "the persisted verdict and dispositions; a controller that reads them back is re-judging the "
+                "reviewer's findings at the controller's own tier, which is the recorded fake-green shape",
+                errors,
+            )
         if GATE_LOOP_PINS["stopping_rule"] not in fix_cycle:
             fail(
                 f"{gate_ref_rel} § Fix cycle must state the stopping rule (no "
@@ -607,24 +799,15 @@ def check_gate_loop(errors: list[str]) -> None:
             "caller cannot match across rounds",
             errors,
         )
-    declared = re.search(r"^tools:[ \t]*(.*)$", _frontmatter_block(triage), re.M)
-    value = declared.group(1).strip() if declared else ""
-    if not value:
+    granted = _tools_entries(triage)
+    if not granted:
         fail(
             f"{triage_rel}: tools: must be an explicit, non-empty allowlist; absent, it inherits every tool "
-            f"including {'/'.join(FILE_WRITE_TOOLS)} and every tracker verb, and the two checks below pass "
-            "vacuously on the empty grant they read -- the read-only, no-tracker-verb delegate this file "
-            "describes would be enforced by nothing",
+            f"including {'/'.join(FILE_WRITE_TOOLS)} and every tracker verb, and the check below passes "
+            "vacuously on the empty grant it reads -- the no-tracker-verb delegate this file describes would "
+            "be enforced by nothing",
             errors,
         )
-    granted = [entry.strip() for entry in value.split(",") if entry.strip()]
-    for tool in FILE_WRITE_TOOLS:
-        if tool in granted:
-            fail(
-                f"{triage_rel}: tools: grants {tool!r}; triage authors dispositions its caller applies, so a "
-                "delegate that can edit is one that can land a fix no caller recorded",
-                errors,
-            )
     for entry in granted:
         verb = _sy_verb(entry)
         if verb in CANONICAL_VERBS:
@@ -633,6 +816,68 @@ def check_gate_loop(errors: list[str]) -> None:
                 "dispositions, so a tracker write from here is a record no caller authored",
                 errors,
             )
+
+    sandbox_modes = _guard_mode_set(guard, "SANDBOX_WRITE_MODES")
+    review_modes = _guard_mode_set(guard, "REVIEW_MODES")
+    if sandbox_modes is None or review_modes is None:
+        fail(
+            f"{guard_rel}: `SANDBOX_WRITE_MODES` and `REVIEW_MODES` could not both be read out of the guard "
+            "source, so the grant/mode cross-check below would pass on every brief without comparing "
+            "anything; the guard's modes are what say which briefs may hold a write grant",
+            errors,
+        )
+    else:
+        for dead in sorted(sandbox_modes - review_modes):
+            fail(
+                f"{guard_rel}: {dead!r} may write the sandbox but is absent from `REVIEW_MODES`, so no "
+                "dispatch ever resolves it as a mode; the grant is dead, and the brief holding the write it "
+                "licenses is guarded by nothing",
+                errors,
+            )
+        for mode in sorted(sandbox_modes | review_modes):
+            brief = ROOT / "agents" / f"{mode}.md"
+            if not brief.is_file():
+                fail(
+                    f"{guard_rel}: {mode!r} is guarded as a review mode but `agents/{mode}.md` does not "
+                    "exist; a mode with no brief is a typo or a deleted agent, and skipping it passes every "
+                    "grant check on a name nothing dispatches",
+                    errors,
+                )
+                continue
+            entries = _tools_entries(brief.read_text(encoding="utf-8"))
+            if not entries:
+                fail(
+                    f"agents/{mode}.md: tools: must be an explicit, non-empty allowlist; absent it inherits "
+                    f"every tool including {'/'.join(FILE_WRITE_TOOLS)}, and the grant/mode cross-check below "
+                    "passes vacuously on the empty list it reads",
+                    errors,
+                )
+                continue
+            if mode in sandbox_modes:
+                if "Write" not in entries:
+                    fail(
+                        f"agents/{mode}.md: {guard_rel} lets this mode write the scratch sandbox, but its "
+                        "tools: names no `Write`; a sandbox nothing is granted to write is a guard leg "
+                        "nothing exercises, and the brief's own persist step cannot run",
+                        errors,
+                    )
+                for twin in ("mcp__plugin_sy_sy__scratch_dir", "mcp__sy__scratch_dir"):
+                    if twin not in entries:
+                        fail(
+                            f"agents/{mode}.md: tools: names no {twin!r}, so this sandbox-write mode cannot "
+                            "resolve the root it is allowed to write; a write grant with no way to find the "
+                            "sandbox lands outside it and is refused",
+                            errors,
+                        )
+            else:
+                for tool in FILE_WRITE_TOOLS:
+                    if tool in entries:
+                        fail(
+                            f"agents/{mode}.md: tools: grants {tool!r}, but {guard_rel} guards this mode "
+                            "without granting it the sandbox; every write it attempts is refused, so the "
+                            "grant only buys a delegate that tries to write and fails",
+                            errors,
+                        )
 
     try:
         floors = json.loads((ROOT / "config/floors.json").read_text(encoding="utf-8"))
@@ -647,6 +892,56 @@ def check_gate_loop(errors: list[str]) -> None:
                 "a cost-reduction change may lower the independent reviewer",
                 errors,
             )
+
+
+def check_agent_returns(errors: list[str]) -> None:
+    """The hand-back rules and the persist recipe live in one reference, reached by citation from every brief.
+
+    Standalone rather than a leg of `check_invariants` for the reason `check_gate_justification` is: that
+    function's `read()` raises on any missing file, so a synthetic tree exercising this rule would have to
+    carry every path it reads.
+    """
+    returns_rel = "skills/shared/references/agent-returns.md"
+    returns = (ROOT / returns_rel).read_text(encoding="utf-8")
+    whys = {
+        "handback_is_one_shot":
+            "a second hand-back is refused and reaches nobody, so one spent on a status note is the contract "
+            "return thrown away",
+        "no_midround_channel":
+            "most delegates hold no `SendMessage`, and an agent that believes otherwise waits for an exchange "
+            "that never comes instead of returning",
+        "persist_before_return":
+            "an expensive report that exists only inside a return is lost with the return, and re-running the "
+            "pass is the only recovery",
+        "return_terminates":
+            "work after a return lands nowhere, because the turn it would report in is over",
+        "persist_scratch_root":
+            "a recipe that does not name the repo-keyed root sends the report to a task-keyed sibling the "
+            "caller never looks in",
+        "persist_name_shape":
+            "an unstamped report name is clobbered by the second run over the same scope, which is the run "
+            "that had something new to say",
+    }
+    for key in AGENT_RETURN_PINS:
+        if GATE_LOOP_PINS[key] not in returns:
+            fail(f"{returns_rel} must keep its `{GATE_LOOP_PINS[key]}` rule: {whys[key]}", errors)
+    for p in sorted((ROOT / "agents").glob("*.md")):
+        brief = p.read_text(encoding="utf-8")
+        if returns_rel not in brief:
+            fail(
+                f"{p.relative_to(ROOT)} must cite `{returns_rel}` by path for its hand-back rules; a brief "
+                "that restates one instead forks it, and the copy stops tracking the reference silently",
+                errors,
+            )
+        # Citing the path does not stop a brief restating a rule beside the citation, and the restated copy
+        # is the one that drifts: absence is the half that actually holds the single statement.
+        for key in AGENT_RETURN_PINS:
+            if GATE_LOOP_PINS[key] in brief:
+                fail(
+                    f"{p.relative_to(ROOT)} must not restate `{GATE_LOOP_PINS[key]}` from {returns_rel}; "
+                    "cite the path instead, or the copy and the reference drift apart silently",
+                    errors,
+                )
 
 
 def check_human_text_routing(errors: list[str]) -> None:
@@ -2066,6 +2361,7 @@ def main() -> int:
     check_poller_argv(errors)
     check_gate_justification(errors)
     check_gate_loop(errors)
+    check_agent_returns(errors)
     check_human_text_routing(errors)
 
     # Here rather than in pytest because neither is reachable there: one is bash, and the other sits
