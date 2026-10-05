@@ -8,6 +8,8 @@ Before executing any plan step, verify its load-bearing plan facts against the c
 
 An adjacent issue you surface mid-build that sits outside the plan's declared file set follows the same test: fold a small, low-risk fix into this branch as a recorded scope extension in `accepted_deviations` rather than filing a follow-up; defer only when it justifies its own ticket (see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/scope-discipline.md`).
 
+When a decision you make here — an accepted deviation, a resolved `needs-decision` — sets a convention the repository will want next time, edit the standards authority `/sy:standards resolve` named in this branch alongside the code, when that authority lives in this repository, so the normal gate covers the edit before merge; the retrospective reports it rather than proposing it.
+
 A seeded memory anchor this phase's own direct observation contradicts is handled the same way rather than silently carried forward or left to HANDOFF: author it as a `MEMORY_REFUTE` candidate in the return block and record it to `memory_refutations` in state, for the parent to apply the moment this phase returns (see `${CLAUDE_PLUGIN_ROOT}/skills/shared/references/memory.md`).
 
 ## Resolve build model
@@ -24,6 +26,8 @@ Pass `BUILD_MODEL` as the Agent invocation's **model override** and record/recon
 If BUILD cannot run at the requested model, re-dispatch once at `BUILD_MODEL_FALLBACK` clamped up to the `opus` floor and set `build_model_observed` to the model that actually ran, per model-dispatch.md's "Unavailability falls back once". A plan written in the old single-word profile format, or one whose BUILD tier is otherwise ambiguous, is never guessed upward: it resolves to the `opus` floor.
 
 ## Delegated slice protocol
+
+For a Bug, the regression test precedes any fix, integrated or delegated: write it on the build branch, run it before any fix lands, and record in `scratch_dir($TASK_KEY)` the command, the SHA it ran at, and its failing output — a failure on the reported symptom, not on import or setup. The slice that implements the fix gets that test and the regression obligation in its prompt and must leave the test passing.
 
 Delegate only bounded, low-design-ambiguity slices:
 
