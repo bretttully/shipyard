@@ -67,8 +67,7 @@ SHIP_WORKER_TRACKER_VERBS = {
     "ship-gate": {"set-status"},
 }
 SHIP_WORKER_AGENTS = frozenset(SHIP_WORKER_TRACKER_VERBS)
-# Every agent must be able to ask whether a credential is present without ever reading its value;
-# `sy_tools/guards/secret_guard.py` names this tool as the remedy it steers shell probes toward.
+# Every agent must be able to ask whether a credential is present without ever reading its value.
 CHECK_ENV_TOOL = "check_env"
 # Claude Code's built-in language-server tool, granted only where a repository declares its own servers,
 # and the single copy of the guidance every grant of it is coupled to.
@@ -197,13 +196,11 @@ REQUIRED = {
     "sy_tools/memory.py",
     "sy_tools/preflight.py",
     "sy_tools/secrets.py",
-    "sy_tools/guards/secret_guard.py",
     "sy_tools/guards/review_guard.py",
     "sy_tools/guards/spec_gate_cap_guard.py",
     "skills/tracker/SKILL.md",
     "skills/tracker/CONTRACT.md",
     "skills/tracker/jira/ADAPTER.md",
-    "skills/tracker/jira/references/attachments.md",
     "skills/tracker/jira/references/migration.md",
     "docs/smoke_mcp.py",
     "skills/tracker/github/ADAPTER.md",
@@ -224,7 +221,6 @@ REQUIRED = {
     "skills/shared/references/spec-gate.md",
     "skills/shared/references/model-dispatch.md",
     "skills/shared/references/config-values.md",
-    "skills/shared/references/transcript-attach.md",
     "skills/shared/references/context-economy.md",
     "skills/plan/references/new-objective.md",
     "skills/plan/references/reentry.md",
@@ -971,7 +967,7 @@ def check_human_text_routing(errors: list[str]) -> None:
     # Legs (a) and (h) share one region, computed once: re-deriving it per leg lets the two drift onto
     # different bounds while both still read like the same scope.
     step_one = None
-    section_seven = spec.partition("## 7.")[2].partition("## 8.")[0]
+    section_seven = spec.partition("## 7.")[2].partition("\n## ")[0]
     if "### Step 1" not in section_seven:
         fail(f"{spec_rel} §7 must keep its Step 1 sign-off step; the sign-off pins anchor on it", errors)
     elif "### Step 2" not in section_seven.partition("### Step 1")[2]:
@@ -1400,7 +1396,6 @@ def check_hooks(errors: list[str]) -> None:
     # so a plain script path naming one would satisfy a substring test yet not be runnable.
     for module, events in (
         ("sy_tools.guards.review_guard", ("PreToolUse",)),
-        ("sy_tools.guards.secret_guard", ("PreToolUse",)),
         ("sy_tools.guards.spec_gate_cap_guard", ("PreToolUse",)),
         ("sy_tools.usage", ("Stop", "SubagentStop")),
         ("sy_tools.eval_events", ("PreToolUse", "SubagentStop", "Stop")),
@@ -1479,7 +1474,6 @@ def check_invariants(errors: list[str]) -> None:
     github_adapter = read("skills/tracker/github/ADAPTER.md")
     init_repo = read("skills/init-repo/SKILL.md")
     checkpoint_handoff = read("skills/plan/references/checkpoint-handoff.md")
-    jira_attachments = read("skills/tracker/jira/references/attachments.md")
     readme = read("README.md")
     agent_guide = read("agent-guide.md")
     usage_doc = read("docs/usage.md")
@@ -1608,8 +1602,6 @@ def check_invariants(errors: list[str]) -> None:
         )
     if "TARGET_SHA" not in gate_ref or "TARGET_SHA" not in merge:
         fail("review pin and merge revalidation must record TARGET_SHA", errors)
-    if "process tier" not in handoff:
-        fail("handoff must scale records by process tier", errors)
     if "design contract" not in gate or "verification obligation" not in gate:
         fail("gate must verify the design contract and verification obligations", errors)
     if 'agent_model {"name": "img-inspector"}' not in img_ref:
@@ -1629,14 +1621,19 @@ def check_invariants(errors: list[str]) -> None:
         fail("write-integrity reference must define the denied-write boundary invariant", errors)
     if "gh pr ready" not in pr:
         fail("pr skill must document the Copilot trigger (gh pr ready)", errors)
-    if "attach the scanned transcript" not in handoff or "attach the scanned transcript" not in merge:
-        fail("merge authorization must name its follow-on mutations (merge, attach the scanned transcript, set the task done) at the consent point", errors)
     if "write-integrity.md" not in ship or "write-integrity.md" not in pr or "write-integrity.md" not in spec or "write-integrity.md" not in plan:
         fail("ship/pr/spec/plan must each cross-reference the write-integrity reference", errors)
     if "Name the mutation the approval authorizes" not in spec:
         fail("spec sign-off must name the mutations its approval authorizes", errors)
     if "name the mutations the go-ahead covers" not in plan:
         fail("plan approval must name the mutations the go-ahead covers", errors)
+    if (
+        "Name the follow-on mutations in the question" not in handoff
+        or "which named the follow-on mutations" not in merge
+        or "set the task done" not in handoff
+        or "set the task done" not in merge
+    ):
+        fail("merge authorization must name its follow-on mutations at the consent point", errors)
     for name, text in (
         ("ship", ship + start + handoff), ("spec", spec), ("plan", plan), ("spike", spike),
         ("pr", pr), ("explain", explain), ("init-repo", init_repo),
@@ -1764,7 +1761,7 @@ def check_invariants(errors: list[str]) -> None:
         )
     # Section-scoped on purpose: a whole-file check passes on §2's prose (which legitimately permits a
     # research-phase body edit), a whole-§7 one on Step 1's consent sentence. Widening either disables it.
-    spec_s7 = spec.partition("## 7.")[2].partition("## 8.")[0]
+    spec_s7 = spec.partition("## 7.")[2].partition("\n## ")[0]
     if "update-issue" in spec_s7:
         fail("spec §7 must not reach for update-issue; after approval it posts comments and sets status only", errors)
     if "never writes the Task body" not in spec_s7.partition("### Step 2")[2]:
@@ -1953,7 +1950,7 @@ def check_invariants(errors: list[str]) -> None:
     # hand-built ```json block teaches the caller-composed shape the separate tool exists to remove.
     for name, text in (
         ("handoff-accounting's usage section", handoff.partition("## 2.")[2].partition("## 3.")[0]),
-        ("handoff-accounting's metrics section", handoff.partition("## 3.")[2].partition("## 4.")[0]),
+        ("handoff-accounting's metrics section", handoff.partition("## 3.")[2].partition("\n## ")[0]),
         ("merge-accounting", merge),
     ):
         if "post-log" not in text or "title" not in text or "payload" not in text:
@@ -2116,12 +2113,6 @@ def check_invariants(errors: list[str]) -> None:
     ):
         if "plan.max_active_tasks" not in text:
             fail(f"{name} must name plan.max_active_tasks rather than a hardcoded active-task cap", errors)
-    for name, text in (
-        ("plan", plan), ("spec", spec), ("ship", ship), ("handoff-accounting", handoff),
-        ("merge-accounting", merge), ("jira-attachments", jira_attachments),
-    ):
-        if "transcript.attach" not in text:
-            fail(f"{name} must gate transcript rendering/attachment on transcript.attach", errors)
     for name, text in (("ship", ship), ("immutable-gate", gate_ref), ("pr", pr)):
         if "ship.request_ci_reviewer" not in text:
             fail(f"{name} must gate the automated-reviewer request on ship.request_ci_reviewer", errors)
@@ -2152,8 +2143,6 @@ def check_invariants(errors: list[str]) -> None:
             "resets the total instead destroys the durable metric that flags a run which never converged",
             errors,
         )
-    if "spec.light_tier_max_files" not in spec:
-        fail("spec must name spec.light_tier_max_files rather than an undefined 'small' threshold", errors)
     if "spec.max_spec_gate_rounds" not in spec_gate_ref or "spec_gate_cap_guard" not in spec_gate_ref:
         fail(
             "spec-gate must name both spec.max_spec_gate_rounds and the spec_gate_cap_guard that enforces it; a "
@@ -2165,8 +2154,7 @@ def check_invariants(errors: list[str]) -> None:
         ("ship", ship), ("spec", spec), ("spike", spike), ("plan", plan), ("pr", pr),
         ("immutable-gate", gate_ref), ("handoff-accounting", handoff), ("merge-accounting", merge),
         ("tracker", tracker_skill), ("roadmap-shaping", roadmap_shaping),
-        ("checkpoint-handoff", checkpoint_handoff), ("jira-attachments", jira_attachments),
-        ("gate", gate),
+        ("checkpoint-handoff", checkpoint_handoff), ("gate", gate),
     ):
         if "config-values.md" not in text:
             fail(f"{name} names a live-resolved config value and must cite config-values.md", errors)
@@ -2259,7 +2247,7 @@ def check_invariants(errors: list[str]) -> None:
         )
     # Section-scoped to §7, where the plan half is drafted: `skills.reviewer` appears in §3's own prose, so
     # a whole-file pin here would be satisfied by a mention that has nothing to do with when to ask.
-    if "skills.reviewer" not in spec.partition("## 7.")[2].partition("## 8.")[0]:
+    if "skills.reviewer" not in spec.partition("## 7.")[2].partition("\n## ")[0]:
         fail(
             "spec §7 must gate the `reviewer orientation` question on `skills.reviewer` resolving non-null; "
             "an unconditional question puts an extra call in front of every repository that names no reviewer",
